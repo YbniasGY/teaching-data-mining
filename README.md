@@ -17,15 +17,15 @@ GPLv3](https://img.shields.io/badge/license-GPLv3-blue.svg)](https://www.gnu.org
 <img width="800" alt="image" src="https://user-images.githubusercontent.com/26646492/204134104-8db40501-ccdd-48ff-af75-df56e220f506.png">
 
             
-* **Diapositivas** (https://dadosdelaplace.github.io/teaching-bioestad/slides)
+* **Diapositivas** (https://dadosdelaplace.github.io/teaching-data-mining/slides)
     
-* **Evaluación** (https://github.com/dadosdelaplace/teaching-bioestad/tree/main/eval)
+* **Evaluación** (https://github.com/dadosdelaplace/teaching-data-mining/tree/main/eval)
 
-* **Código diapositivas** (https://github.com/dadosdelaplace/teaching-bioestad/tree/main/slides)
+* **Código diapositivas** (https://github.com/dadosdelaplace/teaching-data-mining/tree/main/slides)
                         
-* **Scripts del curso**: (https://github.com/dadosdelaplace/teaching-bioestad/tree/main/scripts)
+* **Scripts del curso**: (https://github.com/dadosdelaplace/teaching-data-mining/tree/main/scripts)
 
-* **Bibliografía**: (https://github.com/dadosdelaplace/teaching-bioestad/tree/main/biblio)
+* **Bibliografía**: (https://github.com/dadosdelaplace/teaching-data-mining/tree/main/biblio)
 
 * **Manual introductorio de R**: (https://dadosdelaplace.github.io/courses-intro-R/)
 
