@@ -1,0 +1,629 @@
+---
+title: "Entrega II"
+description: |
+  Aplicando knn a hoteles
+author:
+  - name: Eva Barrio  (DNI 51417900-C)
+    affiliation: Universidad Complutense de Madrid
+    affiliation_url: 
+date: "`r Sys.Date()`"
+output:
+    distill::distill_article:
+        highlight: kate
+        colorlinks: true
+        code_folding: false
+        toc: true            
+        toc_depth: 3     
+---
+
+```{r setup, include = FALSE}
+# Ajuste comunes de los chunk
+knitr::opts_chunk$set(fig.width = 9, fig.asp = 1, out.width = "100%",
+                      message = FALSE, warning = FALSE,
+                      echo = TRUE, res = 400)
+```
+
+# Instrucciones (leer antes de empezar)
+
+* Modifica dentro del documento `.Rmd` tus datos personales (nombre y DNI) ubicados en la cabecera del archivo.
+
+* Asegúrate, **ANTES de seguir editando** el documento, que el archivo `.Rmd` se teje correctamente (botón Knit) y se genera el `.html` correspondiente.
+
+* Los chunks (cajas de código) creados están o vacíos o incompletos, de ahí que la mayoría tengan la opción `eval = FALSE`. Una vez que edites lo que consideres debes ir cambiando cada chunck a `eval = TRUE` para que se ejecuten.
+
+* Recuerda que puedes ejecutar chunk a chunk con el botón _play_ o ejecutar todos los chunk hasta uno dado (con el botón a la izquierda del anterior).
+
+## Obligatorio
+
+Deberás implementar un modelo de clasificación knn al conjunto hoteles. Tienes total libertad de decisión pero los siguientes ítems son obligatorios
+
+* Cualquier decisión no justificada/argumentada de forma correcta no será tenida en cuenta.
+
+* Será obligatorio un muestreo inicial.
+
+* Deberás implementar y detallar una fase 2-3 lo más completa posible
+
+* Deberás proponer al menos dos recetas distintas.
+
+* Deberás probar al menos una validación simple (haciendo uso de tune), asegurándote de que el mallado de parámetros es adecuado para afinar la búsqueda de ese punto mínimo d la curva sesgo-varianza
+
+* Deberás probar al menos una validación cruzada v-folds paralelizada
+
+
+# Datos {#datos}
+
+Debes hacer uso del **dataset de reservas de hotel**
+
+```{r}
+library(tidyverse)
+library(tidymodels)
+hoteles_bruto <- read_csv(file = "./datos/hoteles.csv")
+```
+
+Los datos forman parte de un **conjunto de reservas de hotel** elaborado por Antonio et al., 2019 con 50 000 registros de reservas
+
+📚 **Detalle de variables**: <https://linkinghub.elsevier.com/retrieve/pii/S2352340918315191>
+
+## Análisis exploratorio inicial (numérico)
+
+Antes de tomar ninguna decisión con los datos lo primero que deberíamos hacer es **echar un vistazo numérico** a cómo se comportan las variables. Dado que vamos a clasificar, lo primero que deberíamos observar es como se distribuyen los niveles de nuestra variable objetivo.
+
+### Variables
+
+Lo primero es conocer las variables
+
+```{r}
+glimpse(hoteles_bruto)
+```
+
+* `hotel`: tipo de hotel (urbano o resort)
+* `lead_time`: número de días entre la reserva y la estancia.
+* `stays_in_weekend_nights, stays_in_week_nights`: noches en fin de semana y entre semana
+* `adults`: número de adultos
+* `children`: ¿la reserva tiene niños?
+* `meal`: régimen de comidas
+* `country`: país de origen
+* `market_segment`: segmento de mercado de la reserva
+* `distribution_channel`: canal de distribución de la oferta
+* `is_repeated_guest`: ¿repite como huésped?
+* `previous_cancellations`: cancelaciones previas
+* `previous_bookings_not_canceled`: reservas previas (no canceladas)
+* `reserved_room_type, assigned_room_type`: tipo de habitación reservada/asignada
+* `booking_changes`: cambios en la reserva
+* `deposit_type`: tipo de depósito
+* `days_in_waiting_list`: días en lista de espera
+* `customer_type`: tipo de cliente
+* `average_daily_rate`: tarifa media diaria
+* `required_car_parking_spaces`: ¿parking?
+* `total_of_special_requests`: número de requisitos especiales demandados
+* `arrival_date`: fecha de llegada 
+
+### Balance de la variable objetivo
+
+El objetivo será **predecir si una reserva incluye niños/as o no**, por lo que `children` será nuestra variable objetivo. Primer paso: conocer cómo se **distribuyen los niveles de la objetivo** (es binaria)
+
+
+```{r}
+# Objetivo: predecir si la reserva viene o no con niños
+hoteles_bruto %>% 
+  count(children) %>%
+  mutate(porc = 100*n/sum(n))
+```
+
+### skim()
+
+Además con la función `skim()` del paquete `{skimr}` podemos **extraer algunas estadísticas básicas** de nuestros datos.
+
+```{r skim}
+library(skimr)
+# Resumen numérico
+hoteles_bruto %>% skim()
+```
+
+[Continua a partir de aquí creando las secciones que consideres]
+
+Se seguirá la metodología SEMMA para acompañar la toma de decisiones que se necesiten para resolver el problema de clasificación presentado  **predecir si una reserva incluye niños/as o no** utilizando el aprendizaje supervisado y el algoritmo knn.
+
+
+# Fase I. Sample. Muestreo.
+
+```{r}
+hoteles_bruto %>% 
+  count(children) %>% 
+  mutate (porc = 100*n/sum(n))
+```
+
+La proporción entre reservas con niños y sin niños, entre estratos, es muy diferente, un 8.076 % con niños frente al 91.924 % sin niños. Por ello interesa un muestreo aleatorio estratificado que tendrá en cuenta la misma proporción de cada estrato evitando que la muestra se decante por las reservas sin niños.
+
+En la primera prueba lo hacemos con el 20%
+
+```{r}
+hoteles_sample <-
+  hoteles_bruto %>% 
+  group_by(children) %>% 
+  slice_sample (prop = 0.20) %>% 
+  ungroup()
+```
+
+**Se preparan otras muestras para probar con otras proporciones el modelo.**
+
+```{r}
+hoteles_sample2 <-
+  hoteles_bruto %>% 
+  group_by(children) %>% 
+  slice_sample (prop = 0.10) %>% 
+  ungroup()
+```
+
+```{r}
+hoteles_sample3 <-
+  hoteles_bruto %>% 
+  group_by(children) %>% 
+  slice_sample (prop = 0.15) %>% 
+  ungroup()
+```
+
+
+```{r}
+hoteles_sample4 <-
+  hoteles_bruto %>% 
+  group_by(children) %>% 
+  slice_sample (prop = 0.20) %>% 
+  ungroup()
+```
+
+
+# Fase II. Explore. Explorar, visualizar y entender.
+
+## Tipología de las variables
+
+Se observa la tipología de las variables y se estudian de cara a resolver el problema e integrarlas en el algoritmo.
+
+```{r}
+skim(hoteles_bruto)
+```
+
+Tenemos 1 variable de tipo fecha, 11 variables de tipo numérico y 11 variables de tipo texto.
+
+
+### Objetivo categórica
+
+El objetivo es conocer si las reservas tienen niños. La variable objetivo es children, que es de tipo character, no tiene valores missing, es binaria (2 valores únicoa), su valor mínimo es 4 y el máximo 8 ¿qué significa?
+
+### Predictoras numéricas
+
+Las variables predictoras en el knn deben ser numéricas. Vamos por orden explorando todas las variables. 
+
+
+**Las de tipo texto.**
+
+```{r eval = FALSE}
+hoteles_bruto %>% select(where(is.character)) %>% glimpse()
+```
+
+Todas son categorías de algo, de países, del tipo de pensión, tpo de cliente, etc. son de tipo cualitativas por lo que las pasamos a factores que es como R reconoce las variables cualitativas.
+
+```{r}
+hoteles <-
+  hoteles_bruto %>% 
+  mutate (across(where(is.character), as.factor))
+hoteles
+```
+
+```{r}
+skim(hoteles)
+```
+
+
+**La variable hotel** tiene dos tipos de datos. Es binaria.
+
+```{r}
+hoteles %>%
+  count(hotel, sort = TRUE) %>% 
+  mutate(porc=100*n/sum(n))
+```
+
+```{r}
+hoteles %>% 
+  group_by(hotel) %>% 
+  count(children) %>% 
+  mutate(prop = 100*n/sum(n)) %>% 
+  ungroup()
+```
+
+La reserva con niños tiene algo más peso en el hotel tipo Resort, un 8.67% frente a un 7.70%, en ambos se mantienen las ratios de reservas con y sin niños globales.
+No tocamos nada.
+
+**La variable Children** es nuestra variable objetivo. 
+
+**La variable meal** toma 5 valores.
+
+```{r}
+hoteles %>% 
+  count(meal, sort=TRUE)
+```
+
+Podrían ordenarse por importancia y hay que decidir qué hacer con los Undefined, se valora unirlo a SC. Antes se observa qué pasa con los niños.
+
+```{r}
+hoteles %>% 
+  group_by(meal) %>% 
+  count(children) %>% 
+  mutate(prop = n*100/sum(n)) %>% 
+  ungroup()
+```
+
+La proporción de niños con FB es la mayor un 18%. Con SC por su parte la menor con un 2% y los Undefined no dan información.
+Media Pensión y solo desayuno tienen proporciones similares que se pueden agrupar.
+
+Dentro de la receta: Se puede ordenar la variable.
+
+```{r}
+hoteles1 <-
+  hoteles %>% 
+  mutate(meal =
+           factor(meal,
+                  levels = c("Undefined", "SC", "BB", "HB", "FB"),
+                  ordered = TRUE)) %>% 
+  ifelse(meal == "Undefined", "SC", meal))
+hoteles1
+```
+
+```{r}
+hoteles %>% 
+  mutate(pension = ifelse(meal == "Undefined", "SC", meal)) %>% 
+  mutate(pension = factor (pension, levels = c("SC","BB","HB","FB"), ordered = TRUE))
+```
+
+**La orden ifelse para agrupar está mal. BORRAR!!! LO DEJO PARA PENSAR AL REPASAR**
+
+Se observa de nuevo la proporción de niños en la variable
+
+```{r}
+hoteles1 %>% 
+  group_by(meal)  %>%  
+  count(children)  %>%  
+  mutate(porc = 100*n/sum(n)) %>% 
+  ungroup()
+```
+
+
+```{r}
+hoteles1 %>% 
+  group_by(children)  %>%  
+  count(meal)  %>%  
+  mutate(porc = 100*n/sum(n)) %>% 
+  ungroup()
+```
+
+```{r}
+skim(hoteles1)
+```
+
+** La variable country **
+
+Son 155 registros diferentes. Será conveniente agruparlos para convertirla en numérica y optimizar el modelo de forma que luego necesitemos menos dummys. Para agruparlos se observa cómo se reparten las reservas con niños y cómo se distribuyen los datos.
+
+Con una suma acumulada de la proporción se observa que el 90% de las reservas se dan en los primeros 16 países. Incluido Polonia se acumula el 90.690%, en este caso Polonia importa para el modelo.
+
+```{r}
+hoteles  %>% 
+  count(country, sort = TRUE)  %>% 
+  mutate(porc = 100*n/sum(n), cumul = cumsum(porc))
+```
+
+```{r}
+hoteles %>% 
+  count(country)  %>% 
+  mutate(porc = 100*n/sum(n), cumul = cumsum(porc))
+```
+
+Observemos la proporción de reservas con niños y sin niños por países. 
+
+```{r}
+hoteles  %>% 
+  group_by(country)  %>% 
+  count(children, sort=TRUE)  %>%  
+  mutate(porc_children = 100*n/sum(n))  %>%  
+  ungroup()
+```
+
+```{r}
+hoteles  %>% 
+  group_by(country)  %>% 
+  count(children, sort = TRUE)  %>%  
+  mutate(porc_children = 100*n/sum(n))  %>%  
+  ungroup() %>% 
+  filter (children == "none")
+```
+
+
+Portugal, España, Francia, Gran Bretaña y Alemania están a la cabeza en número de reservas, sin embargo no todos están por encima del 8% en porcentaje de reservas con niños. Estos países estarían dentro de los primeros 16 países.
+
+Interesa que las agrupaciones sean de elementos parecidos, que aporten similares datos o bien agrupar para tener un grupo del que el algoritmo pueda aprender.
+
+La orden ifelse no se está utilizando bien. **REPASAR**
+
+```{r}
+hoteles %>% 
+  group_by(country) %>% 
+  count(children) %>% 
+  mutate(prop = n*100/(sum(n))) %>% 
+  ungroup() %>% 
+  filter(prop>8, children=="children") %>% 
+  mutate(mean = mean(prop))
+```
+
+**Opción 1** Podría agrupar los países por continente. Pero perdería información de hoteles en los que reservan muchos niños como Portugal
+
+**Opción 2** Entonces podría agrupar los países en función de los que acogen más niños o menos.
+Simplificando podrían ser 2 grupos uno donde la proporción de niños sea superior a 8 y otro donde sea inferior. Me dejaría en el bando de 0s los países que acogen en valores absolutos más niños aunque con menos proporción.
+
+**Opción 3** grupos formado por  países en función de su porcentaje de reservas.
+
+** REVISAR ESTE CÓDIGO**
+
+```{r}
+hoteles  %>% 
+  mutate(country = fct_lump_prop(country, prop = 0.093,
+                                other_level = "otros"))
+hoteles
+```
+```{r}
+skim(hoteles)
+```
+
+Decisión:
+- Se agrupan el 90.690% de las reservas se dan en los primeros 16 países. Desde Portugal hasta Polonia. Grupo 1
+- Se agrupan los países con el 100% de reservas sin niños. Grupo 2.
+- Se agrupan los países con más del 8% de reservas con niños. Grupo 3.
+- El grupo 4 es lo que queda.
+
+**No USAR hoteles1. Se agrupa dentro de la receta**
+
+**Variable market_segment**
+
+```{r}
+hoteles_bruto %>% 
+  count(market_segment, sort = TRUE) %>% 
+  mutate(prop = 100*n/sum(n), cumsum(prop))
+```
+
+De las 7 modalidades, Online_TA, Offline_TA/TO, Direct y Groups acumulan más del 93% de las reservas.
+Veamos con niños.
+
+```{r}
+hoteles_bruto %>% 
+  group_by(market_segment) %>% 
+  count(children) %>% 
+  mutate(prop = 100*n/sum(n)) %>% 
+  ungroup()
+```
+
+Aviation, Groups y Corporate casi el 100% son reservas sin niños. Se agrupan estas por un lado. Grupo 1.
+
+Y por otro lado, agrupar por market_segment con más del 8% de reservas con niños: Complementary, Direct y Online_TA grupo 2 y Offline_TA/TO por otro. Grupo 3.
+
+
+**distribution_channel**
+
+Tiene 5 modalidades una de ellas sin definir con 1 observacioón y un 0.002 de representatividad, junto con GDS que tiene 0.216 de representación son las menos representadas.
+
+```{r}
+hoteles %>% 
+  count(distribution_channel) %>% 
+  mutate(prop = 100*n/sum(n))
+```
+
+Veamos con niños.
+
+```{r}
+hoteles %>% 
+  group_by(distribution_channel) %>% 
+  count(children, sort=TRUE) %>%
+  mutate (prop = 100*n/sum(n)) %>% 
+  ungroup()
+```
+
+Undefined es una observación de reserva con niños. Y por su parte GDS es 100% sin niños. Representan muy poco.
+TA/TO y Direct es el modo de distribución preferido para reservas con niños.
+
+Por ello se podrían eliminar, al menos undefined.
+
+**reserved_room_type	**
+
+9 modalidades de habitación. La modalidad L solo tiene 2 observaciones, reservas sin niños.
+
+```{r}
+hoteles %>% 
+  count(reserved_room_type) %>% 
+  mutate (porc = 100*n/sum(n), cumsum(porc))
+```
+
+Con niños
+
+```{r}
+hoteles %>% 
+  group_by(reserved_room_type) %>% 
+  count(children, sort=TRUE) %>%
+  mutate (prop = 100*n/sum(n)) %>% 
+  ungroup()
+```
+
+**assigned_room_type	**	
+
+10 modalidades. Diferentes son I, K de la anterior variable que además tiene poco peso
+
+```{r}
+hoteles %>% 
+  count(assigned_room_type, sort = TRUE) %>% 
+  mutate (porc = 100*n/sum(n), cumsum(porc))
+```
+
+Con niños tanto I como K tienen reservas con niños, siendo I algo más representativa ya que supera el 8% de referencia.
+
+```{r}
+hoteles %>% 
+  group_by(assigned_room_type) %>% 
+  count(children) %>%
+  mutate (prop = 100*n/sum(n)) %>% 
+  ungroup()
+```
+
+
+**deposit_type		**
+
+En este caso las reservas sin niños son mayoritarimente del tipo No_Deposit, casi no aporta información por lo que se podría eliminar la variable entera.
+
+```{r}
+hoteles %>% 
+  count(deposit_type, sort = TRUE) %>% 
+  mutate (porc = 100*n/sum(n), cumsum(porc))
+```
+
+
+```{r}
+hoteles %>% 
+  group_by(deposit_type) %>% 
+  count(children) %>%
+  mutate (prop = 100*n/sum(n)) %>% 
+  ungroup()
+```
+
+**customer_type**
+
+Tiene 4 modalidades y con las dos más numerosas se cubre el 95.546% de los datos con ambas y los niños estarían representados.
+
+```{r}
+hoteles %>% 
+  count(customer_type, sort = TRUE) %>% 
+  mutate (porc = 100*n/sum(n), cumsum(porc))
+```
+
+
+```{r}
+hoteles %>% 
+  group_by(customer_type) %>% 
+  count(children) %>%
+  mutate (prop = 100*n/sum(n)) %>% 
+  ungroup()
+```
+
+**requiring_parking**
+
+Una variable binaria que representa el número de plazas de aparcamiento. Si se reserva plaza el porcentaje es casi el doble en reservas con niños que sin reserva de plaza.
+
+```{r}
+hoteles %>% 
+  count(required_car_parking_spaces, sort = TRUE) %>% 
+  mutate (porc = 100*n/sum(n), cumsum(porc))
+```
+
+
+```{r}
+hoteles %>% 
+  group_by(required_car_parking_spaces) %>% 
+  count(children) %>%
+  mutate (prop = 100*n/sum(n)) %>% 
+  ungroup()
+```
+
+**Las de tipo fecha**
+
+La variable que informa de la fecha de llegada está almacenada como texto, la cambiamos a formato fecha, que en el fondo es un número, para poder trabajar con ella.
+
+
+```{r eval = FALSE}
+hoteles_bruto %>% mutate(arrival_date = as.Date(arrival_date))
+```
+
+```{r}
+hoteles <- 
+  hoteles_bruto %>% 
+  mutate(m_arr = month(arrival_date), y_arr = year(arrival_date),
+         wday_arr = wday(arrival_date))
+
+hoteles  %>% 
+  group_by(y_arr)  %>% 
+  count(children)  %>%  
+  mutate(porc = 100*n/sum(n))
+```
+El año no influye mucho, hay que mirar los meses y los fines de semana y festivos.
+
+**Las de tipo numérico**
+
+
+
+## Problemas de codificación o rango
+
+VER SKIM
+
+* `average_daily_rate`: es la única numérica continua pero tiene **valores negativos o cero** -6.38 (deberían ser estrictamente positivo) --> el 2.33% tiene **problemas de codificación o rango** que deberemos pasar a ausentes e imputarles un valores luego.
+
+## Datos ausentes
+
+## Valores atípicos
+
+## Importancia de las variables en relación con la variable objetivo. Dependencia entre variables cualitativas
+
+Más allá del análisis exploratorio numérico, podemos ejecutar un contraste de independencia para tener mayor certeza de si la predictora es dependiente o no de la variable objetivo (si fuera independiente, no tendría sentido mantenerla)
+
+```{r}
+chisq.test(hoteles$children, hoteles$hotel)
+```
+
+Con un nivel de significación igual a 0.05 y un p-valor < 0.05 se rechaza la hipótesis nula de independencia
+
+Y con todas a la vez
+
+```{r warning = FALSE}
+chisq <-
+  tibble("variable" = hoteles %>% 
+           select(where(is.factor))  %>% 
+           names(),
+         "p_value" = hoteles  %>% 
+           select(where(is.factor))  %>% 
+           map_dbl(.f = function(x) { chisq.test(hoteles$children, x)$p.value}))
+chisq  %>% 
+  arrange(desc(p_value))
+```
+
+Y filtrando para un p-valor mayor del nivel marcado aparecen cero filas.
+
+```{r warning = FALSE}
+chisq  %>% 
+  filter(p_value > 0.05)
+```
+
+No hay evidencia suficiente para decir que existe predictora independiente de la objetivo (al 95% de confianza) según la prueba de independencia realizada
+
+
+## Analizar la relación entre las variables
+
+Al analizar esta relación se busca una posible relación lineal, calculando una matriz de correlaciones. Solo se le pueden pasar las variables numéricas de la tabla
+
+```{r}
+library(corrr)
+correlate(hoteles %>% 
+            select(where(is.numeric)))
+```
+
+Para visualizarla
+
+```{r}
+library(corrplot)
+cor_matrix <-
+  cor(hoteles %>% 
+        select(where(is.numeric)))
+corrplot(cor_matrix)
+```
+
+No se observan correlaciones muy evidentes entre ninguna, quizás entre las estancias entre semana y en fin de semana o entre que sea un cliente que repite y que no haya hecho anulaciones antes. Me quedaría con la que más reservas con niños tuviera.
+
+
+# Fase III. Modify. Modificar.
+
+# Fase IV. Model. Modelizar.
+
+# Fase V. Assess. Evaluar.
+

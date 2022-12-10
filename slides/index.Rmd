@@ -278,6 +278,8 @@ class: inverse center middle
 
 #### [CLASE 10: ÁRBOLES DE CLASIFICACIÓN/REGRESIÓN](#clase-10)
 
+#### [CLASE 11: REGRESIÓN LINEAL MULTIVARIANTE](#clase-11)
+
 ]
 
 
@@ -4573,7 +4575,7 @@ for (dias in dias_semana) { # dias recorre los días de la semana
 
 Un último ejemplo: vamos a recorrer nuestro conjunto de datos `swiss` del paquete `{datasets}` y vamos a **pasar a dato ausente** todos los valores de fertilidad superiores a 80. Para ello recorreremos cada fila para después ejecutar un `if`.
 
-```{r}
+```{r eval = FALSE}
 for (i in 1:nrow(swiss)) {
   
   # si cumple la condición dicha fila, ponemos ausente.
@@ -4589,7 +4591,7 @@ for (i in 1:nrow(swiss)) {
 
 Esto sería exactamente equivalente al `ifelse()` vectorizado que vimos en el tema anterior
 
-```{r}
+```{r eval = FALSE}
 data("swiss") # lo cargamos de 0
 swiss$Fertility <- ifelse(swiss$Fertility > 80, NA, swiss$Fertility)
 ```
@@ -16143,7 +16145,7 @@ clusterExport(make_cluster, "outlier_detection") #<<
 * `pkgs`: paquetes que necesite importar en cada cor
 * `save_pred = TRUE` que nos guarde las predicciones de cada conjunto de validación
 
-```{r paralel-tree}
+```{r paralel-tree, eval = FALSE}
 iris_fit_tree_gini <-
   iris_tree_gini_wflow %>%
   tune_grid(resamples = iris_cv_folds,
@@ -16163,7 +16165,7 @@ registerDoSEQ()
 
 Para calcular las **.bg-purple_light[métricas en validación (ya podados)]** basta de nuevo con usar `collect_metrics()`
 
-```{r}
+```{r eval = FALSE}
 # Métricas
 iris_fit_tree_gini %>% collect_metrics()
 ```
@@ -16175,7 +16177,7 @@ iris_fit_tree_gini %>% collect_metrics()
 Dado que el resultado es un `tibble` podemos aplicar lo que sabemos de `{tidyverse}` para filtrar, ordenar, etc. Las **métricas son muy parecidas porque tenemos muy pocas observaciones** de forma que nuestras validación son muy muy poco representativas.
 
 
-```{r}
+```{r eval = FALSE}
 resultados <- iris_fit_tree_gini %>% collect_metrics()
 resultados %>%
   filter(.metric == "roc_auc") %>% 
@@ -16189,7 +16191,7 @@ resultados %>%
 Lo primero es preparar los datos para visualizarlos, y para ello usaremos `pivot_longer()` para tener una columna de `parameter` (coste, profundad y min_n) y otra de `value` (con su valor). Tras prepararlos calcularemos la media de la métrica (que ya es una media en los 48 conjuntos de validación) por cada uno de los valores de los parámetros, para todos los modelos en los que coincida.
 
 
-```{r}
+```{r eval = FALSE}
 resultados_tidy <-
   resultados %>% 
   pivot_longer(cols = c("cost", "depth", "min_n"),
@@ -16226,7 +16228,7 @@ ggplot(media_resultados,
 .pull-right[
 
 
-```{r echo = FALSE, out.width = "85%"}
+```{r eval = FALSE, out.width = "85%"}
 theme_set(theme_minimal())
 ggplot(media_resultados,
        aes(x = value, y = mean)) +
@@ -16246,7 +16248,7 @@ ggplot(media_resultados,
 
 Como sucedía en knn, podemos **.bg-purple_light[ver los mejores]** con `show_best()` (e indicándole la métrica)
 
-```{r}
+```{r eval = FALSE}
 iris_fit_tree_gini %>% show_best("roc_auc", n = 10)
 iris_fit_tree_gini %>% show_best("accuracy", n = 10)
 ```
@@ -16257,7 +16259,7 @@ iris_fit_tree_gini %>% show_best("accuracy", n = 10)
 
 Con `select_best()` podemos **.bg-purple_light[seleccionar el mejor respecto a una métrica]** y con `select_by_one_std_err()` podemos seleccionar el mejor no solo por una métrica dada sino buscar el que tiene menor varianza (dado un parámetro), buscando ese **.bg-purple_light[equilibrio sesgo-varianza]**.
 
-```{r}
+```{r eval = FALSE}
 best_tree_gini_iris_roc <-
   iris_fit_tree_gini %>% select_best("roc_auc")
 best_tree_gini_iris_acc <-
@@ -16270,7 +16272,7 @@ best_tree_gini_iris_acc_std <-
 
 Con el modelo ganador que queramos tras validación, **.bg-purple_light[finalizamos el flujo]**
 
-```{r}
+```{r eval = FALSE}
 final_wf <- 
   iris_tree_gini_wflow %>% 
   finalize_workflow(best_tree_gini_iris_roc)
@@ -16282,7 +16284,7 @@ final_wf <-
 
 Con ese flujo finalizado lo usamos para **.bg-purple_light[ajustar a test ese modelo ganador seleccionado en validación]**
 
-```{r}
+```{r eval = FALSE}
 final_tree_fit <- 
   final_wf %>%
   last_fit(iris_split) 
@@ -16295,7 +16297,7 @@ final_tree_fit %>% collect_metrics()
 
 Con `predict()` podemos **.bg-purple_light[predecir tanto la clase como la probabilidad estimada]** de pertenencia a cada clase
 
-```{r}
+```{r eval = FALSE}
 # Predecir el conjunto test: devuelve la clase
 predict(extract_workflow(final_tree_fit), iris_test)
 ```
@@ -16306,7 +16308,7 @@ predict(extract_workflow(final_tree_fit), iris_test)
 
 Con `predict()` podemos **.bg-purple_light[predecir tanto la clase como la probabilidad estimada]** de pertenencia a cada clase
 
-```{r}
+```{r eval = FALSE}
 # Predecir las probabilidades (las necesitamos para la ROC)
 predict(extract_workflow(final_tree_fit), iris_test, type = "prob")
 ```
@@ -16317,7 +16319,7 @@ predict(extract_workflow(final_tree_fit), iris_test, type = "prob")
 
 Con `augment()` incluimos predicciones al conjunto de test y con `conf_mat()` construimos la **.bg-purple_light[matriz de confusión]**
 
-```{r conf-mat-tree}
+```{r conf-mat-tree, eval = FALSE}
 # Incluir predicciones en tabla
 prob_test <- augment(extract_workflow(final_tree_fit), iris_test)
 
@@ -16352,7 +16354,7 @@ final_tree_fit %>%
 
 .pull-right[
 
-```{r rpart-plot-1, echo = FALSE}
+```{r rpart-plot-1, echo = FALSE, eval = FALSE}
 library(rpart.plot)
 final_tree_fit %>%
   extract_fit_engine() %>%
@@ -16381,7 +16383,7 @@ final_tree_fit %>%
 
 .pull-right[
 
-```{r rpart-plot-2, echo = FALSE}
+```{r rpart-plot-2, echo = FALSE, eval = FALSE}
 library(rpart.plot)
 final_tree_fit %>%
   extract_fit_engine() %>%
@@ -16410,7 +16412,7 @@ final_tree_fit %>%
 
 .pull-right[
 
-```{r rpart-plot-3, echo = FALSE}
+```{r rpart-plot-3, echo = FALSE, eval = FALSE}
 library(rpart.plot)
 final_tree_fit %>%
   extract_fit_engine() %>%
@@ -16425,7 +16427,7 @@ final_tree_fit %>%
 
 Con `vi()` del paquete `{vip}` podemos **.bg-purple_light[ver la importancia relativa de las variables]**. Para detalles del cálculo ver <https://rdrr.io/cran/vip/man/vi_model.html> y <https://koalaverse.github.io/vip/articles/vip.html>
 
-```{r vi-vip}
+```{r vi-vip, eval = FALSE}
 library(vip)
 fit_gini <-
   final_tree_fit %>% 
@@ -16459,7 +16461,7 @@ fit_gini %>%
 
 .pull-right[
 
-```{r vip, echo = FALSE, out.width = "90%"}
+```{r vip, echo = FALSE, out.width = "90%", eval = FALSE}
 fit_gini %>%
   vip() +
   labs(x = "Importancia", y = "Variables",
@@ -16521,13 +16523,13 @@ Para implementar un **.bg-purple_light[random forest]** usaremos la función `ra
 * `min_n`: como antes, es el **.bg-purple_light[número mínimo de observaciones]** que se permite tener a un nodo para dividirse.
 * `trees`: **.bg-purple_light[árboles que prueba]**.
 
-Vamos a lanzar 300 árboles, que seleccione **21 configuraciones posibles** del par `(mtry-min_n)`, para decidir cual es el par de hiperparámetros más óptimo (en total, 6300 árboles). Aquí en iris tampoco podemos elegir mucho ya que solo tenemos 3 variables así que podremos construir árboles solo con 1-2-3 variables. El criterio de división será Gini.
+Vamos a lanzar 100 árboles, que seleccione **21 configuraciones posibles** del par `(mtry-min_n)`, para decidir cual es el par de hiperparámetros más óptimo (en total, 6300 árboles). Aquí en iris tampoco podemos elegir mucho ya que solo tenemos 3 variables así que podremos construir árboles solo con 1-2-3 variables. El criterio de división será Gini.
 
 ```{r}
 # Random forest con tune
 rf_iris <-
   rand_forest(mode = "classification", mtry = tune("n_pred"),
-              min_n = tune("min_n"), trees = 300) %>% 
+              min_n = tune("min_n"), trees = 100) %>% 
   set_engine("ranger", num.threads = 7)
 ```
 
@@ -16593,6 +16595,3082 @@ rf_tune_par %>% select_best("roc_auc")
 
 ---
 
+class: inverse center middle
+name: clase-11
+
+
+# CLASE 11: análisis de regresión multivariante
+
+&nbsp;
+
+### [Intro teórica: univariante](#intro-teoria-reg-uni)
+
+### [Regresión con starwars](#primera-reg-starwars)
+
+### [¿Qué es realmente la bondad de ajuste?](#bondad-ajuste)
+
+### [Regresión en gapminder](#reg-gapminder)
+
+### [Regresión multivariante](#reg-multi)
+
+---
+
+name: intro-teoria-reg-uni
+
+# .orange[REGRESIÓN] .green[UNIVARIANTE]
+
+Empecemos por el más sencillo: ¿cómo se formula un modelo de **.bg-purple_light[reg. univariante]**?
+
+* **.bg-purple_light[Modelo teórico]**: dadas dos variables aleatorias $(X, Y)$, asumimos que la relación entre ellas se pueda modelar mediante un modelo lineal (una recta)
+
+$$Y = f(X) + \epsilon = \left(\beta_0 + \beta_1X \right) +\epsilon, \quad f:~\mathbb{R} \to \mathbb{R}$$ 
+
+--
+
+* **.bg-purple_light[Error]**: $\epsilon$ es una variable aleatoria de **.bg-purple_light[media cero]** y varianza finita (en caso de que nuestra hipótesis teórica sea cierta) que busca **.bg-purple_light[capturar el comportamiento estocástico (ruido)]**.
+
+--
+
+* **.bg-purple_light[Objetivo]**: predecir la **.bg-purple_light[variable objetivo]** (en este caso $Y$ será una **.bg-orange[variable cuantitativa continua]**), modelando la parte determinística del modelo 
+
+$$\hat{y}_i = \hat{\beta}_0 + \hat{\beta}_1 x_i \text{  (ajuste)}, \quad \epsilon_i = y_i - \hat{y}_i \text{  (errores)}$$
+$$\hat{\beta}_1 = \frac{s_{xy}}{s_{x}^2}, \quad \hat{\beta}_0  = \overline{y} - \hat{\beta}_1 \overline{x} \quad \text{  (coef. estimados)}$$
+
+---
+
+# .orange[REGRESIÓN] .green[UNIVARIANTE]
+
+Tanto árboles como knn tiene una **.bg-purple_light[ventaja principal]**: no necesitan hipótesis en los datos. 
+
+
+**.bg-purple_light[¿Para qué vamos a necesitar hipótesis?]** Al fin y al cabo, ya hemos obtenido dos estimadores de la probabilidad de pertenencia a una clase. Las **.bg-purple_light[hipótesis probabilísticas]** en el modelo lineal son necesarias para
+
+--
+
+a) Poder **.bg-purple_light[cuantificar de forma rigurosa la incertidumbre]** y
+variablidad de los estimadores.
+
+b) Con los datos muestrales de los que disponemos, poder
+**.bg-purple_light[inferir conclusiones poblacionales]**
+
+c) Tener una **.bg-purple_light[expresión explícita del estimador]**
+
+---
+
+# .orange[HIPÓTESIS] reg. univariante
+
+* **.bg-purple_light[Linealidad]**: se asume que la variable objetivo y la predictora cumplen (en media) que
+
+$${\rm E} [Y | X = x] = \beta_0 + \beta_1 x$$
+
+--
+
+* **.bg-purple_light[Homocedasticidad de los residuos]** los residuos tendrán media cero pero además se pide que ${\rm Var} [\epsilon | X = x ] = \sigma_{\epsilon}^2$, siendo $\sigma^2 < \infty$ una constante (es decir, los residuos visualizados deberán caer en una banda horizontal constante).
+
+--
+
+* **.bg-purple_light[Normalidad de los residuos]**: los residuos cumplirán además que $\epsilon \sim \mathcal{N} \left(0, \sigma_{\epsilon}^2 \right)$.
+
+--
+
+* **.bg-purple_light[Residuos incorrelados]**: para cualquier i,j, tendremos que ${\rm E} [ \epsilon_i \epsilon_j ] = 0$
+
+&nbsp;
+
+--
+
+Todas ellas se resumen en la siguiente
+
+$$(Y|X = x) \sim \mathcal{N} (\beta_0 + \beta_1x, \sigma_{\epsilon}^2)$$
+
+
+---
+
+# .orange[REGRESIÓN] .green[UNIVARIANTE]
+
+El **.bg-purple_light[proceso de una regresión univariante]** la podemos definir en 5 etapas:
+
+1. **.bg-purple_light[Preprocesamiento]** (fases 1-2-3 SEMMA si fuese necesario)
+
+--
+
+2. **.bg-purple_light[Ajuste y estimación]** de los coeficientes (fase 4 SEMMA). **.bg-purple_light[Interpretación]** de los coeficientes. ¿Podemos prescindir de $(\beta_0, \beta_1)$?
+
+--
+
+3. **.bg-purple_light[Diagnosis]**: en este caso debemos **.bg-purple_light[verificar las hipótesis]** parámetricas planteadas asumidas como ciertas.
+
+--
+
+4. **.bg-purple_light[Evaluación]**: análisis de la varianza y bondad de ajuste (fase 5 SEMMA)
+
+--
+
+5. **.bg-purple_light[Predicción]**: al ser una variable **.bg-purple_light[objetivo continua]**, la métrica ya no se basará en una tasa de bien clasificados sino en la **.bg-purple_light[media de los errores al cuadrado]** (llamada varianza residual o error cuadrático medio ECM)
+
+---
+
+
+# .orange[REGRESIÓN]: .green[PREPROCESAMIENTO]
+
+En el caso de la regresión univariante, el preprocesamiento será mínimo:
+
+* **.bg-purple_light[Variable objetivo]**: la variable $Y$ siempre debe ser numérica continua.
+
+* **.bg-purple_light[Variables predictoras]**: la variable $X$ (en este caso una al ser univariante) también debe ser numérica continua. En el caso de que tengamos **.bg-purple_light[varias candidatas]** elegiremos aquella variable con una **.bg-purple_light[mayor correlación lineal]** (mayor % de varianza explicada si ajustásemos una recta)
+
+&nbsp;
+
+* **.bg-purple_light[Ausentes y outliers]**: una regresión no admite ausentes y es **.bg-purple_light[muy sensible a valores atípicos]**. 
+
+* **.bg-purple_light[Linealidad]**: a veces necesitaremos aplicar alguna transformación a los datos (logaritmo, exponencial, raíz cuadrada, etc) para **.bg-purple_light[linealizarlos]**.
+
+---
+
+name: primera-reg-starwars
+
+# .orange[REGRESIÓN]: .green[PREPROCESAMIENTO]
+
+
+Vamos a ejemplificar el proceso con **.bg-purple_light[dos datasets sencillos]** que ya conocemos: `starwars` y `gapminder`. La idea es la siguiente:
+
+* **.bg-purple_light[Predecir la estatura]** (`height`) en función del peso (`mass`).
+
+* Tomando solo los datos de 1997, **.bg-purple_light[predecir la esperanza de vida]** (`lifeExp`) en función alguna de las variables de `gapminder`
+
+Empecemos por `starwars`
+
+
+```{r}
+starwars
+```
+
+
+---
+
+# .orange[REGRESIÓN]: .green[PREPROCESAMIENTO]
+
+Empecemos por `starwars`
+
+* **.bg-purple_light[Variable objetivo]**: `height` ya es numérica continua.
+
+--
+
+* **.bg-purple_light[Predictora]**: en este caso solo tenemos una (`mass`) y es numérica.
+
+--
+
+
+* **.bg-purple_light[Ausentes y outliers]**: una regresión no admite ausentes y es **.bg-purple_light[muy sensible a atípicos]**. En el caso de `{starwars}` sí tenemos ausentes así que podremos probar dos caminos: eliminarlos o imputar la media. Pero antes vamos a decidir que hacemos con los outliers.
+
+```{r}
+# Comprobamos ausentes
+starwars %>% filter(if_any(c(mass, height), is.na))
+```
+
+---
+
+# .orange[REGRESIÓN]: .green[DATAVIZ]
+
+
+.pull-left[
+
+A la vista del gráfico, es obvio que tenemos al menos un dato atípico (un peso desproporcionado).
+
+```{r eval = FALSE}
+library(ggthemes)
+library(scales)
+ggplot(starwars,
+       aes(x = mass, y = height)) +
+  geom_point(aes(color = sex), size = 3) +
+  scale_color_colorblind() +
+  scale_x_continuous(
+    labels = label_number(suffix = " kg")) +
+  scale_y_continuous(
+    labels = label_number(suffix = " cm")) +
+  theme_minimal() +
+  labs(x = "Peso", y = "Altura",
+       color = "sexo",
+       title = "Regresión altura vs estatura")
+```
+
+]
+
+.pull-right[
+
+```{r echo = FALSE, out.width = "90%"}
+library(ggthemes)
+library(scales)
+ggplot(starwars,
+       aes(x = mass, y = height)) +
+  geom_point(aes(color = sex), size = 3) +
+  scale_color_colorblind() +
+  scale_x_continuous(
+    labels = label_number(suffix = " kg")) +
+  scale_y_continuous(
+    labels = label_number(suffix = " cm")) +
+  theme_minimal() +
+  labs(x = "Peso", y = "Altura",
+       color = "sexo",
+       title = "Regresión altura vs estatura")
+```
+
+]
+
+---
+
+# .orange[REGRESIÓN]: .green[DATAVIZ]
+
+
+.pull-left[
+
+Podemos incluso añadir una hipótetica recta de regresión con `geom_smooth()`
+
+```{r eval = FALSE}
+ggplot(starwars,
+       aes(x = mass, y = height)) +
+  geom_point(aes(color = sex), size = 3) +
+  geom_smooth(method = "lm", se = FALSE) +
+  scale_color_colorblind() +
+  scale_x_continuous(
+    labels = label_number(suffix = " kg")) +
+  scale_y_continuous(
+    labels = label_number(suffix = " cm")) +
+  theme_minimal() +
+  labs(x = "Peso", y = "Altura",
+       color = "sexo",
+       title = "Regresión altura vs estatura")
+```
+
+]
+
+.pull-right[
+
+```{r echo = FALSE, out.width = "90%"}
+library(ggthemes)
+library(scales)
+ggplot(starwars,
+       aes(x = mass, y = height)) +
+  geom_point(aes(color = sex), size = 3) +
+  geom_smooth(method = "lm", se = FALSE) +
+  scale_color_colorblind() +
+  scale_x_continuous(
+    labels = label_number(suffix = " kg")) +
+  scale_y_continuous(
+    labels = label_number(suffix = " cm")) +
+  theme_minimal() +
+  labs(x = "Peso", y = "Altura",
+       color = "sexo",
+       title = "Regresión altura vs estatura")
+```
+
+]
+
+
+---
+
+# .orange[REGRESIÓN]: .green[DATAVIZ]
+
+.pull-left[
+
+También podemos visualizar la distribución de una variable continua con un **.bg-purple_light[histograma]** o su límite continuo (**.bg-purple_light[función de densidad]**)
+
+```{r eval = FALSE}
+ggplot(starwars,
+       aes(x = height)) +
+  geom_histogram(bins = 15,
+                 fill = "#D86456",
+                 alpha = 0.75) +
+  scale_x_continuous(
+    labels = label_number(suffix = " cm")) +
+  theme_minimal() +
+  labs(x = "Altura", y = "Frecuencia",
+       title = "Distribución de la altura")
+```
+
+]
+
+.pull-right[
+
+```{r echo = FALSE, out.width = "90%"}
+ggplot(starwars,
+       aes(x = height)) +
+  geom_histogram(bins = 15,
+                 fill = "#D86456",
+                 alpha = 0.75) +
+  scale_x_continuous(
+    labels = label_number(suffix = " cm")) +
+  theme_minimal() +
+  labs(x = "Altura", y = "Frecuencia",
+       title = "Distribución de la altura")
+```
+
+]
+
+---
+
+# .orange[REGRESIÓN]: .green[DATAVIZ]
+
+.pull-left[
+
+También podemos visualizar la distribución de una variable continua con un **.bg-purple_light[histograma]** o su límite continuo (**.bg-purple_light[función de densidad]**)
+
+```{r eval = FALSE}
+ggplot(starwars,
+       aes(x = mass)) +
+  geom_histogram(bins = 25,
+                 fill = "#4F8ADA",
+                 alpha = 0.75) +
+  scale_x_continuous(
+    labels = label_number(suffix = " kg")) +
+  theme_minimal() +
+  labs(x = "Peso", y = "Frecuencia",
+       title = "Distribución del peso")
+```
+
+]
+
+.pull-right[
+
+```{r echo = FALSE, out.width = "90%"}
+ggplot(starwars,
+       aes(x = mass)) +
+  geom_histogram(bins = 25,
+                 fill = "#4F8ADA",
+                 alpha = 0.75) +
+  scale_x_continuous(
+    labels = label_number(suffix = " kg")) +
+  theme_minimal() +
+  labs(x = "Peso", y = "Frecuencia",
+       title = "Distribución del peso")
+```
+
+]
+
+---
+
+# .orange[REGRESIÓN]: .green[DATAVIZ]
+
+.pull-left[
+
+También podemos visualizar la distribución de una variable continua con un **.bg-purple_light[histograma]** o su límite continuo (**.bg-purple_light[función de densidad]**)
+
+```{r eval = FALSE}
+ggplot(starwars,
+       aes(x = height)) +
+  geom_density(fill = "#D86456",
+               color = "#D86456",
+               alpha = 0.5) +
+  scale_x_continuous(labels = 
+                       label_number(suffix = " cm")) +
+  theme_minimal() +
+  labs(x = "Altura",
+       y = "Frecuencia",
+       title = "Distribución de la altura")
+```
+
+]
+
+.pull-right[
+
+```{r echo = FALSE, out.width = "90%"}
+ggplot(starwars,
+       aes(x = height)) +
+  geom_density(fill = "#D86456",
+               color = "#D86456",
+               alpha = 0.5) +
+  scale_x_continuous(labels = 
+                       label_number(suffix = " cm")) +
+  theme_minimal() +
+  labs(x = "Altura",
+       y = "Frecuencia",
+       title = "Distribución de la altura")
+
+```
+
+]
+
+---
+
+# .orange[REGRESIÓN]: .green[DATAVIZ]
+
+.pull-left[
+
+También podemos visualizar la distribución de una variable continua con un **.bg-purple_light[histograma]** o su límite continuo (**.bg-purple_light[función de densidad]**)
+
+```{r eval = FALSE}
+ggplot(starwars,
+       aes(x = mass)) +
+  geom_density(fill = "#4F8ADA",
+               color = "#4F8ADA",
+               alpha = 0.5) +
+  scale_x_continuous(labels = 
+                       label_number(suffix = " kg")) +
+  theme_minimal() +
+  labs(x = "Peso",
+       y = "Frecuencia",
+       title = "Distribución del peso")
+```
+
+]
+
+.pull-right[
+
+```{r echo = FALSE, out.width = "90%"}
+ggplot(starwars,
+       aes(x = mass)) +
+  geom_density(fill = "#4F8ADA",
+               color = "#4F8ADA",
+               alpha = 0.5) +
+  scale_x_continuous(labels = 
+                       label_number(suffix = " kg")) +
+  theme_minimal() +
+  labs(x = "Peso",
+       y = "Frecuencia",
+       title = "Distribución del peso")
+```
+
+]
+
+---
+
+# .orange[REGRESIÓN]: .green[OUTLIERS]
+
+Hemos visto que claramente **.bg-purple_light[hay al menos un atípico en la predictora]**, pero vamos a comprobarlo numéricamente.
+
+```{r}
+library(outliers)
+starwars_outliers <-
+  starwars %>% drop_na(mass) %>%
+  mutate(outlier_mass = abs(scores(mass, type = "z")) > 3)
+starwars_outliers %>% filter(outlier_mass)
+```
+
+Efectivamente **.bg-purple_light[tenemos un personaje que está muy alejado de la media]**. Vamos a ver que sucede cuando lo quitamos.
+
+
+---
+
+# .orange[REGRESIÓN]: .green[OUTLIERS]
+
+.pull-left[
+
+Tras quitar ese valor atípico mejora la fortaleza de la  relación lineal
+
+```{r eval = FALSE}
+starwars_sin_outliers <-
+  starwars_outliers %>%
+  filter(!outlier_mass)
+
+ggplot(starwars_sin_outliers,
+       aes(x = mass, y = height)) +
+  geom_point(aes(color = sex), size = 3) +
+  geom_smooth(method = "lm", se = FALSE) +
+  scale_color_colorblind() +
+  scale_x_continuous(
+    labels = label_number(suffix = " kg")) +
+  scale_y_continuous(
+    labels = label_number(suffix = " cm")) +
+  theme_minimal() +
+  labs(x = "Peso", y = "Altura",
+       color = "sexo",
+       title = "Regresión altura vs estatura")
+```
+
+]
+
+.pull-left[
+
+```{r echo = FALSE, out.width = "90%"}
+starwars_sin_outliers <-
+  starwars_outliers %>%
+  filter(!outlier_mass)
+
+ggplot(starwars_sin_outliers,
+       aes(x = mass, y = height)) +
+  geom_point(aes(color = sex), size = 3) +
+  geom_smooth(method = "lm", se = FALSE) +
+  scale_color_colorblind() +
+  scale_x_continuous(
+    labels = label_number(suffix = " kg")) +
+  scale_y_continuous(
+    labels = label_number(suffix = " cm")) +
+  theme_minimal() +
+  labs(x = "Peso", y = "Altura",
+       color = "sexo",
+       title = "Regresión altura vs estatura")
+```
+
+]
+
+---
+
+# .orange[REGRESIÓN]: .green[DATAVIZ]
+
+
+
+.pull-left[
+
+¿Cómo queda la distribución de la predictora tras eliminar outliers? ¿Es simétrica?
+
+```{r eval = FALSE}
+ggplot(starwars_sin_outliers,
+       aes(x = mass)) +
+  geom_density(fill = "#D86456",
+               color = "#D86456",
+               alpha = 0.5) +
+  scale_x_continuous(labels = 
+                       label_number(suffix = " kg")) +
+  theme_minimal() +
+  labs(x = "Peso",
+       y = "Frecuencia",
+       title = "Distribución del peso")
+```
+
+]
+
+.pull-right[
+
+```{r echo = FALSE, out.width = "90%"}
+ggplot(starwars_sin_outliers,
+       aes(x = mass)) +
+  geom_density(fill = "#D86456",
+               color = "#D86456",
+               alpha = 0.5) +
+  scale_x_continuous(labels = 
+                       label_number(suffix = " kg")) +
+  theme_minimal() +
+  labs(x = "Peso",
+       y = "Frecuencia",
+       title = "Distribución del peso")
+```
+
+]
+
+---
+
+
+# .orange[REGRESIÓN]: .green[PREPROCESAMIENTO]
+
+
+Lo que haremos por tanto será:
+
+* **.bg-purple_light[Eliminar registros con ausente en la objetivo]** (fuera de receta)
+
+```{r}
+starwars_sin_na <-
+  starwars %>%
+  drop_na(height)
+```
+
+* **.bg-purple_light[Eliminar el único valor atípico]** detectado en la predictora (dentro de receta)
+* **.bg-purple_light[Eliminar  ausentes]** (dentro de receta)
+
+
+&nbsp;
+
+En este caso no generamos validación ya que tenemos muy pocos datos
+
+```{r}
+# Partición
+split_starwars <- initial_split(starwars_sin_na, prop = 0.8)
+train_starwars <- training(split_starwars)
+test_starwars <- testing(split_starwars)
+```
+
+
+
+---
+
+# .orange[REGRESIÓN]: .green[RECETA]
+
+
+```{r}
+rec_reg_starwars <-
+  # Fórmula y datos
+  recipe(data = train_starwars, height ~ mass) %>% 
+  step_filter(!is.na(mass)) %>% 
+  step_mutate(outlier_mass = abs(scores(mass, type = "z")) > 3) %>% 
+  step_filter(!outlier_mass) %>% 
+  step_rm(outlier_mass)
+  
+rec_reg_starwars
+```
+
+---
+
+# .orange[REGRESIÓN]: .green[MODELO]
+
+El modelo será definido con `linear_reg()`
+
+```{r}
+# modelo lineal
+reg_lineal <- linear_reg() %>% set_mode("regression") %>% set_engine("lm")
+```
+
+&nbsp;
+
+Con el modelo y la receta construimos el flujo
+
+```{r}
+reg_wflow_starwars <-
+  workflow() %>% 
+  add_model(reg_lineal) %>% 
+  add_recipe(rec_reg_starwars)
+reg_wflow_starwars
+```
+
+---
+
+
+# .orange[REGRESIÓN]: .green[AJUSTE]
+
+```{r}
+reg_fit_starwars <-
+  reg_wflow_starwars %>% fit(data = train_starwars)
+reg_fit_starwars
+```
+
+---
+
+# .orange[REGRESIÓN]: .green[AJUSTE]
+
+Con `tidy()` podemos ver un **.bg-purple_light[resumen del ajuste]**
+
+```{r}
+tidy(reg_fit_starwars) 
+```
+
+* **.bg-purple_light[Coeficientes]**: aquellos que minimizan la Sum of Squared Residuals o SSR (método de mínimos cuadrados)
+
+$$\left(\hat{\beta}_0, \hat{\beta}_1 \right) = \arg \min_{\boldsymbol{\beta} \in \mathbb{R}^2} \sum_{i=1}^{n} \hat{\epsilon}_{i}^2 =  \arg \min_{\boldsymbol{\beta} \in \mathbb{R}^2} \sum_{i=1}^{n} \left[y_i - \left(\beta_0 + \beta_1x_i \right) \right]^2$$
+
+---
+
+# .orange[REGRESIÓN]: .green[AJUSTE]
+
+Con `tidy()` podemos ver un **.bg-purple_light[resumen del ajuste]**
+
+```{r}
+tidy(reg_fit_starwars) 
+```
+
+* **.bg-purple_light[Interpretación]**:
+  - La predicción del modelo cuando `mass = 0` es de `r round(reg_fit_starwars$fit$fit$fit$coefficients[1], 3)` cm
+  - Por cada kg de más, la estatura sube `r round(reg_fit_starwars$fit$fit$fit$coefficients[2], 3)` cm
+
+---
+
+# .orange[REGRESIÓN]: .green[AJUSTE]
+
+```{r}
+tidy(reg_fit_starwars) 
+```
+
+* `std.error`: nos proporciona la **.bg-purple_light[varianza de la estimación de cada estimador]**, que en el caso univariante es calcula como
+
+$$SE\left( \hat{\beta}_0 \right)^2 = \frac{\sigma_{\epsilon}^{2}}{n} \left[ 1+ \frac{\overline{x}^2}{s_{x}^2} \right], \quad SE\left( \hat{\beta}_1 \right)^2 = \frac{\sigma_{\epsilon}^{2}}{n s_{x}^{2}}$$
+
+En la fórmula anterior, $\sigma_{\epsilon}^{2}$ es la **.bg-purple_light[varianza residual]** real, la varianza de los errores, una cantidad desconocida y cuyo **.bg-purple_light[estimador insesgado]** es $\left(\sum_{i=1}^{n} \hat{\epsilon}_{i}^2 \right)/(n-p-1)$, donde $p$ es el número de variables predictoras (en este caso $p=1$), dando lugar a $\hat{SE}\left( \hat{\beta}_0 \right)$ y $\hat{SE}\left( \hat{\beta}_0 \right)$.
+
+**.bg-green_light[IMPORTANTE]**: dados dos modelos similares, optaremos por aquel con menor varianza.
+
+---
+
+
+# .orange[REGRESIÓN]: .green[AJUSTE]
+
+
+
+```{r}
+tidy(reg_fit_starwars) 
+```
+
+Debido a las hipótesis impuestas, tenemos resultados teóricos como el siguiente:
+
+$$\frac{\hat{\beta}_j - \beta_j}{SE \left(\hat{\beta}_j \right)} \sim \mathcal{N}(0,1), \quad \frac{\hat{\beta}_j - \beta_j}{\hat{SE} \left(\hat{\beta}_j \right)} \sim t_{n-p-1}$$
+
+El **.bg-purple_light[t-estadístico]** es lo que tenemos guardado en `statistics`, siendo `p.value` el resultado del contraste:
+
+$$\mathcal{H}_0:~\beta_j = 0, \quad \mathcal{H}_1:~\beta_j \neq  0$$
+
+En este caso ambos son significativamente distintos de cero (al 95% de confianza).
+
+---
+
+# .orange[REGRESIÓN]: .green[AJUSTE]
+
+Dicho contraste nos permitirá **.bg-purple_light[calibrar la importancia del efecto (lineal) de cada uno de los parámetros]**: si obtenemos p-valores muy elevados, no habría evidencias suficientes en la muestra para rechazar la hipótesis nula, lo que nos podría indicar que quizás dicho parámetro no tiene un efecto estadísticamente significativo en la estimación.
+
+Amén de la estimación puntual realizada podemos obtener los **.bg-purple_light[intervalos de confianza]**
+
+```{r}
+# Al 95%
+confint(reg_fit_starwars %>% extract_fit_engine())
+
+# Al 90%
+confint(reg_fit_starwars%>% extract_fit_engine(), level = 0.90)
+```
+
+---
+
+# .orange[REGRESIÓN]: .green[AJUSTE]
+
+```{r}
+# Al 95%
+confint(reg_fit_starwars %>% extract_fit_engine())
+```
+
+Un aspecto importante al usar intervalos de confianzas es que el intervalo de confianza (IC) con nivel de confianza $1 - \alpha$ (habitualmente 95%) **.bg-red_light[no nos habla de la probabilidad de que el parámetro esté dentro de ESE intervalo]**. En un enfoque frecuentista, el parámetro a estimar estará o no dentro del intervalo, pero es incorrecto hablar de una probabilidad de pertenencia al mismo.
+
+Ese nivel de confianza  no nos habla tanto de la probabilidad del parámetro sino del **.bg-purple_light[método con el que se ha construido el intervalo]**: de una colección de muestras extraídas de la población (de forma aleatoria), en aproximadamente 95 de cada 100 de ellas, el intervalo construido habrá conseguido incluir dentro al parámetro. Son los intervalos los que se mueven «aleatoriamente» (aleatoriedad determinada por la muestra obtenida) alrededor del parámetro (cuyo valor es desconocido pero FIJO), no al revés.
+
+---
+
+# .orange[REGRESIÓN]: .green[DIAGNOSIS]
+
+En este caso no va a ser posible realizarla ya que tenemos muy poca muestra, pero luego veremos cómo **.bg-purple_light[comprobar que las hipótesis son ciertas]**. De ello se ocupará (como se muestra debajo) el paquete `{performance}`
+
+```{r eval = FALSE}
+library(performance)
+check_model(reg_fit_starwars %>% extract_fit_engine())
+```
+
+---
+
+# .orange[REGRESIÓN]: .green[EVALUACIÓN]
+
+Esta fase es la que haríamos en validación. Con `glance()` obtenemos el resumen de la evaluación del modelo
+
+```{r}
+glance(reg_fit_starwars)
+```
+
+* **.bg-purple_light[Bondad de ajuste]**: también conocida como $R^2$, guardado en `r.squared`, será el **.bg-purple_light[ratio de información explicada]** (siempre entre 0 y 1) por el modelo. En el caso de modelos lineales en parámetros, podemos realizar lo que se conoce como **.bg-purple_light[ANOVA]** (análisis de la varianza)
+
+$$SST \text{ (info total)} = SSE \text{ (info explicada)} + SSR \text{ (info no explicada)}$$
+
+---
+
+# .orange[REGRESIÓN]: .green[EVALUACIÓN]
+
+$$SST \text{ (info total)} = SSE \text{ (info explicada)} + SSR \text{ (info no explicada)}$$
+
+Traducido a varianza (con $s_{\hat{\epsilon}}^2$ la estimación de la varianza residual) $s_{y}^2 = s_{\hat{y}}^2 + s_{\hat{\epsilon}}^2$
+
+Así la bondad de ajuste es $R^2 = \frac{SSE}{SST} = 1 - \frac{SSR}{SST} = 1 - \frac{s_{\hat{\epsilon}}^2}{s_{y}^2}$. En el caso particular de la reg. lineal univariante, $R^2 = \rho_{x,y}^2$ (correlación al cuadrado)
+
+&nbsp;
+
+--
+
+* **.bg-purple_light[Bondad de ajuste penalizada]**: guardado en `adj.r.squared`, dicha bondad de ajuste **.bg-purple_light[penaliza el uso de predictoras]** para prevenir el sobreajuste
+
+$$R_{adj}^{2} = 1 - \frac{n-1}{n-p-1}\frac{SSR}{SST}$$
+
+Si dos modelos nos proporcionan el mismo $R^2$, $R_{adj}^2$ disminuirá por cada variable de más que usemos (para conseguir lo mismo). De hecho puede ser negativo
+
+---
+
+# .orange[REGRESIÓN]: .green[PREDICCIÓN]
+
+Por último podemos predecir y evaluar en test como hacíamos en modelos anteriores
+
+```{r}
+# Predecimos en tst
+fit_starwars <- reg_wflow_starwars %>% last_fit(split = split_starwars)
+
+# Evaluamos en test
+fit_starwars %>% collect_metrics()
+
+# Errores en test
+pred_test <-
+  fit_starwars %>%
+  collect_predictions() %>%
+  mutate(error = height - .pred)
+```
+
+---
+
+# .orange[REGRESIÓN]: .green[DATAVIZ]
+
+.pull-left[
+
+Si pintamos los valores reales frente a las predicciones, si el modelo fuese fiable (que por el bajo tamaño muestral y el bajo $R^2$ ya podíamos intuir que no), deberían estar cerca de la diagonal.
+
+```{r eval = FALSE}
+# Gráficos en test
+ggplot(data = pred_test,
+       mapping = aes(x = .pred,
+                     y = height)) +
+  geom_point(color = "#006EA1",
+             alpha = 0.6,
+             size = 4) +
+  # Diagonal
+  geom_abline(intercept = 0, slope = 1,
+              color = "orange", size = 1.2) +
+  theme_minimal() + 
+  labs(title = "Resultados regresión lineal univariante",
+       subtitle =
+         "Valores deberían estar cercanos a la diagonal",
+       caption =
+         "Autor: Javier Álvarez Liébana | Datos: starwars",
+       x = "Predicciones",
+       y = "Valores reales")
+```
+
+]
+
+.pull-right[
+
+```{r echo = FALSE, out.width = "90%"}
+# Gráficos en test
+ggplot(data = pred_test,
+       mapping = aes(x = .pred, y = height)) +
+  geom_point(color = "#006EA1", alpha = 0.6, size = 4) +
+  # Diagonal
+  geom_abline(intercept = 0, slope = 1,
+              color = "orange", size = 1.2) +
+  theme_minimal() + 
+  labs(title = "Resultados regresión lineal univariante",
+       subtitle =
+         "Valores deberían estar cercanos a la diagonal",
+       caption =
+         "Autor: Javier Álvarez Liébana | Datos: starwars",
+       x = "Predicciones",
+       y = "Valores reales")
+```
+
+]
+]
+---
+
+name: bondad-ajuste
+
+# Paréntesis: .orange[BONDAD DE AJUSTE]
+
+Hemos comentado que la bondad de ajuste nos proporciona un ratio de la información explicada, de forma que la **.bg-purple_light[interpretación más habitual]** es que si está cercano a 0 es malo, y si está cercano a 1 es bueno. De hecho habitual se «desprecian» regresiones con $R^2 = 0.5$ (por ejemplo)
+
+Veamos un ejemplo de lo que realmente significa el $R^2$ y por qué **.bg-purple_light[no siempre una baja bondad de ajuste]** tiene que implicar un **.bg-purple_light[mal modelo]**
+
+&nbsp;
+
+Con tamaño muestral $n = 3000$, vamos a simular los datos según el modelo $Y = 4 - 0.4X + \epsilon$, donde $\epsilon \sim \mathcal{N}(0,\sigma_{\epsilon})$
+
+---
+
+
+# Paréntesis: .orange[BONDAD DE AJUSTE]
+
+Para ello vamos a generar una función que depende de $\sigma_{\epsilon}$
+
+```{r}
+n <- 3000
+
+# predictora fija
+x <- rnorm(n, mean = 0, sd = 1)
+
+# Función para generar el modelo
+regresion_sigma <- function(sigma, n, x) {
+  
+  epsilon <- rnorm(n, mean = 0, sd = sigma)
+  y <- 4 - 0.4*x + epsilon
+  
+  return(y)
+}
+```
+
+Tras ello podemos aplicar la función a un vector de sigmas (y que nos devuelva una tabla)
+
+```{r}
+sigmas <- seq(0.001, 2, l = 20)
+y <- sigmas %>% map_dfc(regresion_sigma, n, x) %>% tibble()
+```
+
+---
+
+# Paréntesis: .orange[BONDAD DE AJUSTE]
+
+Convertimos dicha salida a tidy para juntarlo con la X (la repetimos 20 veces porque X no cambia)
+
+```{r}
+datos <-
+  tibble("x" = rep(x, each = 20),
+         "y" = y %>%
+           pivot_longer(cols = everything(), names_to = NULL, values_to = "y") %>% 
+           pull(y),
+         "sigma" = rep(round(sigmas, 5), n))
+
+datos
+```
+
+---
+
+# Paréntesis: .orange[BONDAD DE AJUSTE]
+
+.pull-left[
+
+Dichos datos podemos visualizarlos junto con el ajuste. **.bg-purple_light[¿Por qué la recta es igual para todos?]**
+
+```{r eval = FALSE}
+ggplot(datos,
+       aes(x = x, y = y)) +
+  geom_point(size = 0.5,
+             alpha = 0.5) +
+  geom_smooth(method = lm, se = FALSE,
+              size = 0.5) +
+  facet_wrap(~sigma) +
+  theme_minimal()
+```
+
+]
+
+.pull-right[
+
+```{r echo = FALSE, out.width = "90%"}
+ggplot(datos,
+       aes(x = x, y = y)) +
+  geom_point(size = 0.5,
+             alpha = 0.5) +
+  geom_smooth(method = lm, se = FALSE,
+              size = 0.5) +
+  facet_wrap(~sigma) +
+  theme_minimal()
+```
+
+]
+
+
+---
+
+# Paréntesis: .orange[BONDAD DE AJUSTE]
+
+.pull-left[
+
+Dado que las diferencias entre datos no se deben a la parte determinística (lo que busca modelizar el ajuste) sino a la parte estocástica (con un rudio de mayor o menor varianza), el modelo ajustado es exactamente el mismo pero el $R^2$ empeora según aumenta el ruido. 
+
+**.bg-purple_light[¿La separación de los datos respecto a la recta se debe a un peor modelo?]**
+
+
+La bondad de ajuste no solo va a depender de lo bueno o malo que sea nuestro modelo sino del **.bg-purple_light[error irreductible]**, de la cantidad de ruido presente en los datos, por lo que deberemos combinarlo con una visualización o análisis de los residuos estimados.
+
+```{r}
+reg_fit_starwars$fit$fit$fit$residuals
+```
+
+]
+
+.pull-right[
+
+```{r echo = FALSE, out.width = "90%"}
+ggplot(datos,
+       aes(x = x, y = y)) +
+  geom_point(size = 0.5,
+             alpha = 0.5) +
+  geom_smooth(method = lm, se = FALSE,
+              size = 0.5) +
+  facet_wrap(~sigma) +
+  theme_minimal()
+```
+
+]
+
+
+---
+
+# Paréntesis: .orange[BONDAD DE AJUSTE]
+
+.pull-left[
+
+De hecho si calculamos el $R^2$ de cada modelo vemos que, aunque la parte determinística subyacente es la misma (es decir, el ajuste debe ser el mismo, como así es), el $R^2$ decrece.
+
+
+
+```{r eval = FALSE}
+bondad_ajuste <-
+  datos %>% group_by(sigma) %>%
+  summarise(R2 =
+              summary(lm(y ~ x))$r.squared)
+ggplot(bondad_ajuste,
+       aes(x = sigma, y = R2)) +
+  geom_line(size = 2.5) +
+  theme_minimal() + 
+  labs(x = "Sigma (desv. típica del ruido)",
+       y = "Bondad de ajuste")
+```
+
+]
+
+.pull-right[
+
+```{r echo = FALSE, out.width = "90%"}
+bondad_ajuste <-
+  datos %>% group_by(sigma) %>%
+  summarise(R2 =
+              summary(lm(y ~ x))$r.squared)
+ggplot(bondad_ajuste,
+       aes(x = sigma, y = R2)) +
+  geom_line(size = 2.5) +
+  theme_minimal() + 
+  labs(x = "Sigma (desv. típica del ruido)",
+       y = "Bondad de ajuste")
+```
+
+]
+
+
+
+
+---
+
+name: reg-gapminder
+
+# .orange[REGRESIÓN]: .green[PREPROCESAMIENTO]
+
+
+En el caso de `gapminder`.
+
+* **.bg-purple_light[Variable objetivo]**: `lifeExp` es numérica continua.
+
+* **.bg-purple_light[Predictora]**: tenemos varias para elegir como predictora. ¿Cuál elegimos?
+
+```{r}
+gapminder %>% select(where(is.numeric)) %>% cor()
+```
+
+---
+
+# .orange[REGRESIÓN]: .green[PREPROCESAMIENTO]
+
+
+.pull-left[
+
+```{r eval = FALSE}
+library(corrplot)
+gapminder %>% select(where(is.numeric)) %>% cor() %>% corrplot()
+```
+
+La mejor predictora a priori será `gdpPercap` ya que es la que tiene una correlación más elevada (en valor absoluto). Recuerda que en una **.bg-purple_light[reg. lineal univariante la bondad de ajuste es igual a la correlación al cuadrado]**
+
+]
+
+
+.pull-right[
+
+```{r echo = FALSE, out.width = "90%"}
+library(corrplot)
+gapminder %>% select(where(is.numeric)) %>% cor() %>% corrplot()
+```
+
+]
+
+---
+
+# .orange[REGRESIÓN]: .green[PREPROCESAMIENTO]
+
+
+* **.bg-purple_light[Ausentes y outliers]**: una regresión no admite ausentes y es **.bg-purple_light[muy sensible a valores atípicos]**. 
+
+En el caso de `{gapminder}` no tenemos ausentes
+
+```{r}
+gapminder %>% filter(if_any(everything(), is.na))
+```
+
+
+
+---
+
+# .orange[REGRESIÓN]: .green[OUTLIERS]
+
+.pull-left[
+
+En el caso de gapminder no se aprecia a priori ningún atípico pero si se observa que la relación no es lineal sino logarítmica
+
+```{r eval = FALSE}
+ggplot(gapminder,
+       aes(x = gdpPercap, y = lifeExp)) +
+  geom_point(aes(color = continent),
+             size = 2.5) +
+  geom_smooth(method = "lm", se = FALSE) +
+  scale_color_colorblind() +
+  scale_x_continuous(
+    labels = label_dollar(accuracy = 1)) +
+  scale_y_continuous(
+    labels = label_number(suffix = " años")) +
+  theme_minimal() +
+  labs(x = "Renta per cápita",
+       y = "Esperanza de vida",
+       title = "Regresión esperanza de vida vs renta",
+       color = "Continente")
+```
+
+]
+
+.pull-right[
+
+```{r echo = FALSE, out.width = "90%"}
+ggplot(gapminder_1997,
+       aes(x = gdpPercap, y = lifeExp)) +
+  geom_point(aes(color = continent), size = 2.5) +
+  geom_smooth(method = "lm", se = FALSE) +
+  scale_color_colorblind() +
+  scale_x_continuous(labels =
+                       label_dollar(accuracy = 1)) +
+  scale_y_continuous(labels = 
+                       label_number(suffix = " años")) +
+  theme_minimal() +
+  labs(x = "Renta per cápita",
+       y = "Esperanza de vida",
+       title = "Regresión esperanza de vida vs renta",
+       color = "Continente")
+```
+
+]
+
+---
+
+# .orange[REGRESIÓN]: .green[DATAVIZ]
+
+.pull-left[
+
+Con `scale_x_log10()` vamos a realizar el gráfico pero tomando escala logarítmica
+
+```{r eval = FALSE}
+ggplot(gapminder_1997,
+       aes(x = gdpPercap, y = lifeExp)) +
+  geom_point(aes(color = continent),
+             size = 2.5) +
+  geom_smooth(method = "lm", se = FALSE) +
+  scale_color_colorblind() +
+  scale_x_log10() +
+  scale_y_continuous(
+    labels = label_number(suffix = " años")) +
+  theme_minimal() +
+  labs(x = "Renta per cápita",
+       y = "Esperanza de vida",
+       title = "Regresión esperanza de vida vs renta",
+       color = "Continente")
+```
+
+]
+
+.pull-right[
+
+```{r echo = FALSE}
+ggplot(gapminder_1997,
+       aes(x = gdpPercap, y = lifeExp)) +
+  geom_point(aes(color = continent), size = 2.5) +
+  geom_smooth(method = "lm", se = FALSE) +
+  scale_color_colorblind() +
+  scale_x_log10() +
+  scale_y_continuous(labels = 
+                       label_number(suffix = " años")) +
+  theme_minimal() +
+  labs(x = "Renta per cápita",
+       y = "Esperanza de vida",
+       title = "Regresión esperanza de vida vs renta",
+       color = "Continente")
+```
+
+]
+
+---
+
+# .orange[REGRESIÓN]: .green[TRANSFORMAR]
+
+Por lo visto en los gráficos, vamos a tener que transformar nuestra variable X tomando logaritmos. Vamos a **.bg-purple_light[aplicar dicha transformación]** para poder analizar la distribución de los datos y detección de outliers, aunque luego la incluiremos dentro de la receta (ya que no queremos perder los datos originales y es una transformación concreta para un modelo - lineal - concreto).
+
+```{r}
+gapminder_log <-
+  gapminder %>%
+  mutate(gdpPercap = log(gdpPercap))
+
+gapminder_log %>% select(where(is.numeric)) %>% cor()
+```
+
+Fíjate la **.bg-purple_light[subida de la correlación]** entre predictora y objetivo.
+
+---
+
+# .orange[REGRESIÓN]: .green[DATAVIZ]
+
+.pull-left[
+
+Fíjate que en renta per cápita no se aprecian datos atípicos pero si en la esperanza de vida (en África)
+
+```{r eval = FALSE}
+ggplot(gapminder_1997,
+       aes(x = gdpPercap, y = lifeExp)) +
+  geom_point(aes(color = continent), size = 2.5) +
+  geom_smooth(method = "lm", se = FALSE) +
+  scale_color_colorblind() +
+  scale_x_log10() +
+  scale_y_continuous(labels = 
+                       label_number(suffix = " años")) +
+  theme_minimal() +
+  labs(x = "Renta per cápita",
+       y = "Esperanza de vida",
+       title = "Regresión esperanza de vida vs renta",
+       color = "Continente")
+```
+
+]
+
+.pull-right[
+
+```{r echo = FALSE, out.width = "90%"}
+ggplot(gapminder_1997,
+       aes(x = gdpPercap, y = lifeExp)) +
+  geom_point(aes(color = continent), size = 2.5) +
+  geom_smooth(method = "lm", se = FALSE) +
+  scale_color_colorblind() +
+  scale_x_log10() +
+  scale_y_continuous(labels = 
+                       label_number(suffix = " años")) +
+  theme_minimal() +
+  labs(x = "Renta per cápita",
+       y = "Esperanza de vida",
+       title = "Regresión esperanza de vida vs renta",
+       color = "Continente")
+```
+
+]
+
+---
+
+# .orange[REGRESIÓN]: .green[DATAVIZ]
+
+.pull-left[
+
+Es más o menos simétrica pero con una pecularidad: parece que tiene una distribución bimodal.
+
+```{r eval = FALSE}
+ggplot(gapminder_log,
+       aes(x = gdpPercap)) +
+  geom_density(fill = "#5263CF",
+               color = "#5263CF",
+               alpha = 0.6) +
+  theme_minimal() +
+  labs(x = "Renta per cápita",
+       y = "Frecuencia")
+```
+
+]
+
+.pull-right[
+
+```{r echo = FALSE, out.width = "90%"}
+ggplot(gapminder_log,
+       aes(x = gdpPercap)) +
+  geom_density(fill = "#5263CF",
+               color = "#5263CF",
+               alpha = 0.6) +
+  theme_minimal() +
+  labs(x = "Renta per cápita",
+       y = "Frecuencia")
+```
+
+]
+
+---
+
+# .orange[REGRESIÓN]: .green[OUTLIERS]
+
+Vamos a detectar si tenemos o no outliers (en la predictora) de manera numérica
+
+```{r}
+gapminder_log %>% 
+  mutate(outliers = abs(scores(gdpPercap, type = "z")) > 2) %>% 
+  filter(outliers)
+```
+
+La mayoría son los registros de Kuwait así que vamos a decidir eliminarlos todos los registros de dicho país.
+
+```{r}
+gapminder_log <-
+  gapminder_log %>% 
+  filter(country != "Kuwait")
+```
+
+---
+
+# .orange[REGRESIÓN]: .green[RECETA]
+
+Así la receta queda de la siguiente manera (63%-27%-10%)
+
+```{r}
+# Partición
+split_gapminder <- initial_split(gapminder, prop = 0.9)
+train_gapminder <- training(split_gapminder)
+test_gapminder <- testing(split_gapminder)
+
+# Validación
+validation_gapminder <- validation_split(train_gapminder, prop = 0.7)
+
+# Receta
+rec_reg_gapminder <-
+  # Fórmula y datos
+  recipe(data = train_gapminder %>% filter(country != "Kuwait"),
+         lifeExp ~ gdpPercap) %>% 
+  step_log(gdpPercap, base = 10) %>%
+  # los demás imputamos por la media
+  step_mutate(gdpPercap = ifelse(abs(scores(gdpPercap, type = "z")) > 2, NA, gdpPercap)) %>% 
+  step_impute_mean(gdpPercap)
+rec_reg_gapminder
+```
+
+---
+
+
+# .orange[REGRESIÓN]: .green[AJUSTE]
+
+Fíjate que el modelo es el mismo, así que no hace falta redefinirlo
+
+
+```{r}
+reg_wflow_gapminder <-
+  workflow() %>% 
+  add_model(reg_lineal) %>% 
+  add_recipe(rec_reg_gapminder)
+reg_wflow_gapminder
+```
+
+---
+
+# .orange[REGRESIÓN]: .green[AJUSTE]
+
+Tras definir el flujo entrenamos y validamos igual que en modelos anteriores (aquí no tenemos parámetros a optimizar, así que no tenemos `tune_grid()`)
+
+```{r}
+reg_fit_gapminder <- 
+  reg_wflow_gapminder %>%
+  fit_resamples(resamples = validation_gapminder)
+```
+
+En el caso de la regresión, `collect_metrics()` nos devuelve dos métricas: el error cuadrático medio o rmse (la raíz cuadrada de la media de los residuales al cuadrado, también conocida como la raíz de la varianza residual) y rsq (la bondad de ajuste que hemos llamado $R^2$ anteriormente)
+
+```{r}
+reg_fit_gapminder %>% collect_metrics()
+```
+
+---
+
+# .orange[REGRESIÓN]: .green[AJUSTE]
+
+
+Dado que en una regresión no hay parámetros a elegir, **.bg-purple_light[la validación no nos sirve de mucho ya que no hay nada que decidir]**: la expresión de un ajuste de regresión es explícita. Así que vamos a ajustar con `fit()` a todo el train.
+
+```{r}
+reg_fit_gapminder <-  reg_wflow_gapminder %>% fit(train_gapminder)
+tidy(reg_fit_gapminder)
+```
+
+* La predicción de la esperanza de vida es -10.927 si el **.bg-purple_light[LOGARITMO de la renta]** per cápita (ojo que nuestra X la hemos transformado) es nula, es decir, si la renta per cápita es de 1$
+
+* Por cada unidad que se **.bg-purple_light[incrementa el logaritmo de la renta per cápita]** sube 19.937 años la esperanza de vida. Es decir, si la renta per cápita se **.bg-purple_light[multiplica por 10]** (es decir su logaritmo aumenta una unidad), la renta aumenta 19.937 años.
+
+
+---
+
+# .orange[REGRESIÓN]: .green[DIAGNOSIS]
+
+
+.pull-left[
+
+Veamos en detalle en que consiste la fase de diagnosis haciendo uso de la función anteriormente mencionada del paquete `{performance}`
+
+
+```{r eval = FALSE}
+library(performance)
+check_model(reg_fit_gapminder %>% extract_fit_engine())
+```
+
+]
+
+.pull-right[
+
+```{r echo = FALSE, out.width = "95%"}
+library(performance)
+check_model(reg_fit_gapminder %>% extract_fit_engine())
+```
+
+]
+
+---
+
+# .orange[REGRESIÓN]: .green[DIAGNOSIS]
+
+
+
+.pull-left[
+
+1. **.bg-purple_light[Linealidad]**: el gráfico titulado `linearity` es un diagrama de dispersión de predicciones (eje X) vs residuos (eje Y). Bajo hipótesis de linealidad, lo esperable es que no exista tendencia significativa
+
+✅ **.bg-green_light[Linealidad superada]**
+
+
+]
+
+.pull-right[
+
+```{r echo = FALSE, out.width = "95%"}
+library(performance)
+check_model(reg_fit_gapminder %>% extract_fit_engine())
+```
+
+]
+
+
+---
+
+# .orange[REGRESIÓN]: .green[DIAGNOSIS]
+
+Además de visualizar podemos comprobarlo analíticamente con un **.bg-purple_light[ANOVA de los predictores vs los residuos]**
+
+```{r}
+ajuste <- reg_fit_gapminder %>% extract_fit_engine()
+lm(ajuste$residuals ~ ajuste$fitted.values) %>% anova()
+```
+
+
+El ANOVA está constrastando el modelo $\hat{\epsilon} = \beta_0 + \beta_1 \hat{y}$ tal que la **.bg-purple_light[hipótesis nula]** será $\mathcal{H}_0:~\beta_1 = 0$. Si el p-valor `Pr(>F)` de la prueba F  realizada es muy pequeño, deberíamos rechazar la hipótesis nula. En este caso no lo es, por lo que no parece existir tendencia lineal entre residuos y predictores
+
+---
+
+# .orange[REGRESIÓN]: .green[DIAGNOSIS]
+
+¿Y si tuviésen una **.bg-purple_light[relación cuadrática]**? Con `I()` le indicamos que la fórmula debe ser interpretado en sentido aritmético)
+
+```{r}
+lm(ajuste$residuals ~ I(ajuste$fitted.values^2) + ajuste$fitted.values) %>% anova()
+```
+
+
+El ANOVA está constrastando el modelo $\hat{\epsilon} = \beta_0 + \beta_1 \hat{y} + \beta_2 \hat{y}^2$ tal que la **.bg-purple_light[hipótesis nula]** será $\mathcal{H}_0:~\beta_1 = \beta_2 = 0$. Si el p-valor `Pr(>F)` de la prueba F  realizada es muy pequeño, deberíamos rechazar la hipótesis nula. En este caso no lo es, por lo que no parece existir tampoco tendencia cuadrática entre residuos y predictores
+
+---
+
+
+# .orange[REGRESIÓN]: .green[DIAGNOSIS]
+
+
+
+.pull-left[
+
+2. **.bg-purple_light[Homocedasticidad]** (varianza finita y constante de los residuos): el gráfico titulado `homogeneity of variance` nos contrasta la raíz cuadrada del valor absoluto de los residuos estandarizados frente a las predicctiones (se conoce como gráfico de escala-localización). Deberíamos obtener un gráfico cuya recta de regresión saliese casi plana en torno al 1
+
+
+
+]
+
+.pull-right[
+
+```{r echo = FALSE, out.width = "95%"}
+library(performance)
+check_model(reg_fit_gapminder %>% extract_fit_engine())
+```
+
+]
+
+---
+
+# .orange[REGRESIÓN]: .green[DIAGNOSIS]
+
+Además de visualizarlo podemos comprobarlo analíticamente realizando un test de heterocedasticidad con la función `check_heteroscedasticity()` del paquete `{performance}`
+
+```{r}
+check_heteroscedasticity(ajuste)
+```
+
+
+**.bg-red_light[Homecedasticidad de los residuos no superada]**: deberíamos probar a transformar la predictora (lo típico es tomar raíz cuadrada o logaritmo para variables no negativos, o transformaciones de Yeo-Johnson si toma valores negativos) o probar algún otro modelo, aunque es la hipótesis más "complicada" de cumplir (y casi nunca se suele cumplir al 100%).
+
+---
+
+# .orange[REGRESIÓN]: .green[DIAGNOSIS]
+
+.pull-left[
+
+Lo importante es que la recta de regresión al dibujar los residuos no se aprecia una banda cuya anchura se modifique, más o menos constante
+
+
+```{r eval = FALSE}
+ggplot(
+  tibble("obs" = 1:length(ajuste$residuals),
+         "res" = ajuste$residuals),
+  aes(x = obs, y = res)) + 
+  geom_point() + 
+  geom_smooth(method = "lm", se = FALSE) +
+  theme_minimal()
+```
+
+
+]
+
+.pull-right[
+
+```{r echo = FALSE}
+ggplot(
+  tibble("obs" = 1:length(ajuste$residuals),
+         "res" = ajuste$residuals),
+  aes(x = obs, y = res)) + 
+  geom_point() + 
+  geom_smooth(method = "lm", se = FALSE) +
+  theme_minimal()
+```
+
+]
+---
+
+# .orange[REGRESIÓN]: .green[DIAGNOSIS]
+
+
+
+.pull-left[
+
+3. **.bg-purple_light[Normalidad de los residuos]**: el gráfico titulado `normality of residuals` nos visualiza un gráfico QQ-plot, mostrando los percentiles teóricos de una normal (la línea diagonal) frente a los percentiles empíricos de nuestros residuos. Bajo normalidad, los puntos deberían estar en torno a la diagonal (suele ser habitual que se alejen los extremos)
+
+La función de densidad teórico vs empírica se muestra en la segunda gráfica `normality of residuals`
+
+]
+
+.pull-right[
+
+```{r echo = FALSE, out.width = "95%"}
+library(performance)
+check_model(reg_fit_gapminder %>% extract_fit_engine())
+```
+
+]
+
+---
+
+# .orange[REGRESIÓN]: .green[DIAGNOSIS]
+
+Además de visualmente podemos comporbarlo analíticamente con contrates de normalidad, usando `ols_test_normality()` del paquete `{olsrr}`
+
+```{r message = FALSE, warning = FALSE}
+library(olsrr)
+ols_test_normality(ajuste$residuals)
+```
+
+**.bg-red_light[No supera el test de normalidad de residuos]**: una opción muy habitual para que lo cumpla es transformar la objetivo tomando raíz cuadrada, logaritmo o transformaciones Box-Cox para variables positivas, o transformaciones Yeo-Johnson para variables que puedan tomar valores negativos.
+
+---
+
+# .orange[REGRESIÓN]: .green[TRANSFORMACIONES]
+
+La **.bg-purple_light[transformación de Box-Cox]** se define como
+
+$$Y^{(\lambda)} = \frac{Y^{\lambda} - 1}{\lambda} \text{ si } \lambda\neq0, \quad Y^{(\lambda)} =log(Y) \text{ si } \lambda=0$$
+
+La **.bg-purple_light[transformación de Yeo-Johnson]** se define como
+
+$$Y^{(\lambda)} = \frac{(Y + 1)^{\lambda} - 1}{\lambda} \text{ si } \lambda\neq0,y \geq 0 \quad Y^{(\lambda)} =log(Y+1) \text{ si } \lambda=0,y \geq 0$$
+
+$$Y^{(\lambda)} = \frac{-(-Y + 1)^{2-\lambda} - 1}{2 - \lambda} \text{ si } \lambda\neq2,y < 0 \quad Y^{(\lambda)} =-log(-Y+1) \text{ si } \lambda=2,y < 0$$
+
+Ambas se puede probar en la receta con `step_YeoJohnson()`, `step_BoxCox()`, o con `step-sqrt()`. Tampoco te vuelvas loco: son hipótesis que se deberían cumplir ASINTÓTICAMENTE (es decir, con muestra grande)
+
+---
+
+# .orange[REGRESIÓN]: .green[DIAGNOSIS]
+
+
+
+**.bg-purple_light[Incorrelación de residuos]**: no nos lo da la función de `check_model()` pero podemos calcularlo fácilmente con `durbinWatsonTest()`, del paquete `{car}`. Lo que hace es comparar los residuos con sus retardos (lageados).
+
+```{r}
+library(car)
+durbinWatsonTest(ajuste)
+```
+
+
+No hay evidencia suficiente para rechazar la hipótesis nula: **.bg-green_light[no podemos rechazar que estén incorrelados]**
+
+
+---
+
+
+# .orange[REGRESIÓN]: .green[DIAGNOSIS]
+
+
+
+.pull-left[
+
+5. **.bg-purple_light[valores influyentes (extra)]**: el gráfico titulado `influential observations` nos visualiza el impacto atípico que puedan tener algunas observaciones. Diferencia dos tipos: **.bg-purple_light[outliers]** (valor atípico de la respuesta pudiendo perturbar la varianza residual) y **.bg-purple_light[high-leverage points]** con valor atípico en alguna de las predictoras
+
+]
+
+.pull-right[
+
+```{r echo = FALSE, out.width = "95%"}
+library(performance)
+check_model(reg_fit_gapminder %>% extract_fit_engine())
+```
+
+]
+
+---
+
+# .orange[REGRESIÓN]: .green[EVALUACIÓN]
+
+Con `glance()` obtenemos el resumen de la evaluación del modelo
+
+```{r}
+glance(reg_fit_starwars)
+```
+
+---
+
+# .orange[REGRESIÓN]: .green[PREDICCIÓN]
+
+Por último podemos predecir y evaluar en test como hacíamos en modelos anteriores
+
+```{r}
+# Predecimos en tst
+fit_gapminder <- reg_wflow_gapminder %>% last_fit(split = split_gapminder)
+
+# Evaluamos en test
+fit_gapminder %>% collect_metrics()
+
+# Errores en test
+pred_test <-
+  fit_gapminder %>%
+  collect_predictions() %>%
+  mutate(error = lifeExp - .pred)
+```
+
+---
+
+# .orange[REGRESIÓN]: .green[DATAVIZ]
+
+.pull-left[
+
+Si pintamos los valores reales frente a las predicciones, si el modelo fuese fiable (que por el bajo tamaño muestral y el bajo $R^2$ ya podíamos intuir que no), deberían estar cerca de la diagonal.
+
+```{r eval = FALSE}
+# Gráficos en test
+ggplot(data = pred_test,
+       mapping = aes(x = .pred,
+                     y = lifeExp)) +
+  geom_point(color = "#006EA1",
+             alpha = 0.6,
+             size = 4) +
+  # Diagonal
+  geom_abline(intercept = 0, slope = 1,
+              color = "orange", size = 1.2) +
+  theme_minimal() + 
+  labs(title = "Resultados regresión lineal univariante",
+       subtitle =
+         "Valores deberían estar cercanos a la diagonal",
+       caption =
+         "Autor: Javier Álvarez Liébana | Datos: gapminder",
+       x = "Predicciones",
+       y = "Valores reales")
+```
+
+
+]
+
+.pull-right[
+
+```{r echo = FALSE, out.width = "90%"}
+# Gráficos en test
+ggplot(data = pred_test,
+       mapping = aes(x = .pred, y = lifeExp)) +
+  geom_point(color = "#006EA1", alpha = 0.6, size = 4) +
+  # Diagonal
+  geom_abline(intercept = 0, slope = 1,
+              color = "orange", size = 1.2) +
+  theme_minimal() + 
+  labs(title = "Resultados regresión lineal univariante",
+       subtitle =
+         "Valores deberían estar cercanos a la diagonal",
+       caption =
+         "Autor: Javier Álvarez Liébana | Datos: gapminder",
+       x = "Predicciones",
+       y = "Valores reales")
+```
+
+]
+
+---
+
+name: reg-multi
+
+# .orange[REGRESIÓN] .green[MULTIVARIANTE]
+
+
+Veamos un ejemplo más complicado, el famoso Boston dataset, que tenemos en el archivo `Boston.xlsx` (necesitamos `read_xlsx()` de la librería `{readxl}`)
+
+```{r}
+library(readxl)
+boston <- read_xlsx(path = "./datos/Boston.xlsx")
+glimpse(boston)
+```
+
+---
+
+# .orange[REGRESIÓN] .green[MULTIVARIANTE]
+
+El dataset está basado en el **.bg-purple_light[estudio que realizaron Harrison and Rubinfeld]**, en 1978, en el que se pretende determinar la **.bg-purple_light[disposición de los compradores para pagar más por una vivienda]** en un entorno con mayor calidad del aire.
+
+El conjunto de datos contiene datos del **.bg-purple_light[área metropolitana de Boston]**, con datos de 560 vecindarios, midiendo 14 variables en cada uno.
+
+Las variables están totalmente descritas en <https://www.sciencedirect.com/science/article/abs/pii/0095069678900062?via%3Dihub>
+
+---
+
+# .orange[REGRESIÓN] .green[MULTIVARIANTE]
+
+* **.bg-purple_light[Variable objetivo]**: la variable `medv` que  representa la **.bg-purple_light[mediana del precio inmobiliario]** (en miles de dolares).
+
+* **.bg-orange[Variables arquitectónicas]**: variables `rm` (número medio de habitaciones) y `age` (porcentaje de propiedades construidas antes de 1940).
+
+* **.bg-orange[Variables de vecindario]**: variables `crim` (tasa de criminalidad), `zn` (% del territorio destinado a áreas residenciales), `indus` (% del territorio destinado al tejido industrial), `chas` (¿hay río limitando la extensión en el territorio?) y `tax` (coste de los servicios públicos)
+
+* **.bg-orange[Variables socioeconómicas]**: variables `ptratio` (ratio alumno-profesor), `black` (índice de población negra - sí, es un archivo vergonzoso, pero no viene mal ver los sesgo raciales de muchos de los datos que consumimos - calculada como $1000 (B - 0.63)^2$, donde $B$ es el % de población negra) y `lstat` (porcentaje de la población con bajos ingresos).
+
+* **.bg-orange[Variables de accesibilidad]**: variables `dis` (distancia a oficinas de empleo) y `rad` (categoría indicando la accesibilidad a la red de autopistas, a mayor índice, mayor accesibilidad).
+
+* **.bg-orange[Variables de calidad del aire]**: variable `nox` (concentración anual de óxido de nitrógeno).
+
+---
+
+# .orange[REGRESIÓN] .green[MULTIVARIANTE]
+
+* **.bg-purple_light[Variable objetivo]**: ya es numérica
+
+* **.bg-purple_light[Variable predictora]**: son todas numéricas (algunas como `rad` en realidad sería cualitativas, pero ya están expresados en niveles numéricos), pero si queremos hacer un modelo univariante necesitaremos decidir con cuál nos quedamos.
+
+&nbsp;
+
+
+
+Por tanto una de las primeras ideas es **.bg-purple_light[calcular la correlación de las variables]** 
+
+```{r}
+# Calculamos matriz de correlaciones (cor(Xi, Xj)) redondeando
+boston %>% cor()
+```
+
+
+---
+
+# .orange[REGRESIÓN] .green[MULTIVARIANTE]
+
+.pull-left[
+
+```{r eval = FALSE}
+boston %>% cor() %>% corrplot.mixed()
+```
+
+]
+
+.pull-right[
+
+```{r echo = FALSE, out.width = "95%"}
+boston %>% cor() %>% corrplot.mixed()
+```
+
+]
+
+---
+
+# .orange[REGRESIÓN] .green[MULTIVARIANTE]
+
+Podemos deducir que si el objetivo es **.bg-purple_light[predecir medv]** mediante una reg. lineal univariante las **.bg-purple_light[variables más determinantes]** (más correladas en valor absoluto) serían 
+
+* `lstat` (proporción de gente de clase baja)
+
+* `rm` (nº medio de habitaciones)
+
+--
+
+Dicha relación la podemos medir de una forma más rigurosa realizando un contraste de correlación con `cor.test()` (en ambos casos observamos un p-valor ínfimo --> rechazamos la hipótesis nula de incorrelación)
+
+```{r}
+# medv vs lstat
+cor.test(boston$medv, boston$lstat)
+
+# medv vs rm
+cor.test(boston$medv, boston$rm)
+```
+
+---
+
+# .orange[REGRESIÓN] .green[MULTIVARIANTE]
+
+.pull-left[
+
+```{r eval = FALSE}
+boston_tidy <-
+  boston %>%
+  pivot_longer(cols = c("lstat", "rm"),
+               names_to = "var",
+               values_to = "values")
+ggplot(boston_tidy,
+       aes(x = values, y = medv,
+           color = var)) +
+  geom_point(alpha = 0.7) +
+  geom_smooth(method = "lm", se = FALSE) +
+  theme_minimal() +
+  labs(x = "predictora",
+       y = "objetivo",
+       color = "variable")
+```
+
+]
+
+.pull-right[
+
+```{r echo = FALSE, out.width = "90%"}
+boston_tidy <-
+  boston %>% pivot_longer(cols = c("lstat", "rm"),
+                          names_to = "var",
+                          values_to = "values")
+ggplot(boston_tidy,
+       aes(x = values, y = medv,
+           color = var)) +
+  geom_point(alpha = 0.7) +
+  geom_smooth(method = "lm", se = FALSE) +
+  theme_minimal() +
+  labs(x = "predictora",
+       y = "objetivo",
+       color = "variable")
+```
+
+]
+
+---
+
+# .orange[REGRESIÓN] .green[MULTIVARIANTE]
+
+.pull-left[
+
+```{r eval = FALSE}
+ggplot(boston_tidy,
+       aes(x = values, fill = var)) +
+  geom_density(alpha = 0.5) +
+  theme_minimal() +
+  labs(x = "predictora",
+       y = "frecuencia",
+       color = "variable")
+```
+
+]
+
+.pull-right[
+
+```{r echo = FALSE, out.width = "90%"}
+ggplot(boston_tidy,
+       aes(x = values, fill = var)) +
+  geom_density(alpha = 0.5) +
+  theme_minimal() +
+  labs(x = "predictora",
+       y = "frecuencia",
+       color = "variable")
+```
+
+]
+
+---
+
+
+# .orange[REGRESIÓN] .green[MULTIVARIANTE]
+
+Como antes **.bg-purple_light[definimos las particiones]**, con un 80% de test y un 20% de train
+
+```{r echo = FALSE}
+set.seed(1234567)
+```
+
+```{r}
+# Partición
+split_boston <- initial_split(boston, prop = 0.8)
+train_boston <- training(split_boston)
+test_boston <- testing(split_boston)
+```
+
+Vamos a hacer **.bg-purple_light[dos modelos de regresión univariantes]** con las dos variables más correladas, las variables `lstat` y `rm`, definidos como
+
+* **.bg-purple_light[Modelo 1]**: $medv = \beta_0 + \beta_1*lstat + \epsilon$
+
+* **.bg-purple_light[Modelo 2]**: $medv = \beta_0 + \beta_1*rm + \epsilon$
+
+---
+
+# .orange[REGRESIÓN] .green[MULTIVARIANTE]
+
+Haciendo una receta básica (piensa una receta mejor), la diferencia entre ambos será la primera línea
+
+```{r}
+rec_boston_1 <-
+  recipe(data = train_boston, medv ~ lstat) %>%
+  step_mutate(across(all_numeric_predictors(),
+                     function(x) { ifelse(abs(scores(x, type = "z")) > 2, NA, x) })) %>% 
+  step_impute_mean(all_numeric_predictors()) 
+```
+
+```{r}
+rec_boston_2 <-
+  recipe(data = train_boston, medv ~ rm) %>%
+  step_mutate(across(all_numeric_predictors(),
+                     function(x) { ifelse(abs(scores(x, type = "z")) > 2, NA, x) })) %>% 
+  step_impute_mean(all_numeric_predictors())
+```
+
+---
+
+# .orange[REGRESIÓN] .green[MULTIVARIANTE]
+
+Y generamos los dos flujos (mismo modelo, distinta receta)
+
+```{r}
+wflow_boston_1 <-
+  workflow() %>% add_recipe(rec_boston_1) %>% add_model(reg_lineal)
+mod1 <- wflow_boston_1 %>% fit(data = train_boston)
+tidy(mod1)
+
+wflow_boston_2 <-
+  workflow() %>% add_recipe(rec_boston_2) %>% add_model(reg_lineal)
+mod2 <- wflow_boston_2 %>% fit(data = train_boston)
+tidy(mod2)
+```
+
+---
+
+# .orange[REGRESIÓN] .green[MULTIVARIANTE]
+
+```{r}
+tidy(mod1)
+```
+
+Los **.bg-purple_light[modelos ajustados]** son los siguientes:
+
+* **.bg-purple_light[Modelo 1]**: $\hat{medv} = -34.352856 - 0.933154∗lstat$
+
+---
+
+# .orange[REGRESIÓN] .green[MULTIVARIANTE]
+
+```{r}
+tidy(mod2)
+```
+
+* **.bg-purple_light[Modelo 2]**: $\hat{medv} = -32.633704 + 8.805604∗rm$
+
+---
+
+# .orange[REGRESIÓN] .green[MULTIVARIANTE]
+
+
+Amén de la estimación puntual realizada podemos obtener los **.bg-purple_light[intervalos de confianza de la estimación]**:
+
+```{r}
+# Al 95%
+confint(mod1 %>% extract_fit_engine())
+confint(mod2 %>% extract_fit_engine())
+```
+
+
+---
+
+# .orange[REGRESIÓN] .green[MULTIVARIANTE]
+
+.pull-left[
+
+```{r eval = FALSE}
+# Diagnosis gráfica
+check_model(mod1 %>%
+              extract_fit_engine())
+```
+
+]
+
+.pull-right[
+
+```{r echo = FALSE, out.width = "90%"}
+# Diagnosis gráfica
+check_model(mod1 %>% extract_fit_engine())
+```
+
+]
+
+---
+
+# .orange[REGRESIÓN] .green[MULTIVARIANTE]
+
+.pull-left[
+
+```{r eval = FALSE}
+# Diagnosis gráfica
+check_model(mod2 %>%
+              extract_fit_engine())
+```
+
+]
+
+.pull-right[
+
+```{r echo = FALSE, out.width = "90%"}
+# Diagnosis gráfica
+check_model(mod2 %>% extract_fit_engine())
+```
+
+]
+
+---
+
+# .orange[REGRESIÓN] .green[MULTIVARIANTE]
+
+Sin entrar en la diagnosis numérica, ya se ve que el **.bg-red_light[modelo de regresión lineal univariante no parece la mejor alternativa]**.
+
+Podemos hacer la **.bg-purple_light[evaluación de varios modelos]** a la vez con `compare_performance()`
+
+```{r}
+# comparativa
+compare_performance(mod1 %>% extract_fit_engine(),
+                    mod2 %>% extract_fit_engine())
+```
+
+Es ligeramente mejor el modelo 1 con la variable predictora `lstat` pero ambos son bastante mejorables (amén de cumplir ni estar de cerca de cumplir las hipótesis planteadas)
+
+
+---
+
+# .orange[REGRESIÓN] .green[MULTIVARIANTE]
+
+Aun así podemos obtener si queremos las **.bg-purple_light[predicciones]** realizando el ajuste en test.
+
+```{r}
+# Predecimos en test
+fit_1 <- wflow_boston_1 %>% last_fit(split = split_boston)
+fit_2 <- wflow_boston_2 %>% last_fit(split = split_boston)
+
+fit_1 %>% collect_metrics()
+fit_2 %>% collect_metrics()
+```
+
+
+
+---
+
+
+# .orange[REGRESIÓN] .green[MULTIVARIANTE]
+
+Con `collect_predictions()` obtenemos las predicciones (podemos juntarlas con `bind_rows()`)
+
+```{r}
+# Predicciones + variable de error
+pred_test1 <- fit_1 %>% collect_predictions() %>% mutate(error = medv - .pred)
+pred_test2 <- fit_2 %>% collect_predictions() %>% mutate(error = medv - .pred)
+
+# las juntamos
+pred_test <-
+  bind_rows(pred_test1, pred_test2, .id = "var") %>% 
+  mutate(var = ifelse(var == "1", "lstat", "rm"))
+pred_test
+```
+
+---
+
+
+# .orange[REGRESIÓN] .green[MULTIVARIANTE]
+
+.pull-left[
+
+```{r eval = FALSE}
+ggplot(pred_test,
+       aes(x = .pred, y = medv,
+           color = var)) +
+  geom_point(size = 2,
+             alpha = 0.6) + 
+  geom_abline(intercept = 0, slope = 1,
+              size = 0.9) +
+  theme_minimal() +
+  labs(x = "predictora",
+       y = "objetivo (medv)",
+       color = "variable")
+```
+
+]
+
+.pull-right[
+
+```{r echo = FALSE, out.width = "90%"}
+ggplot(pred_test,
+       aes(x = .pred, y = medv,
+           color = var)) +
+  geom_point(size = 2,
+             alpha = 0.6) + 
+  geom_abline(intercept = 0, slope = 1,
+              size = 0.9) +
+  theme_minimal() +
+  labs(x = "predictora",
+       y = "objetivo (medv)",
+       color = "variable")
+```
+
+]
+
+---
+
+
+# .orange[REGRESIÓN] .green[MULTIVARIANTE]
+
+Por todo lo visto, no parece la mejor idea usar un modelo univariante (recuerda que son los dos mejores modelos univariantes que podíamos haber elegido)
+
+**.bg-purple_light[¿Entonces?]**
+
+--
+
+Vamos a incluir más predictoras, definiendo un **.bg-purple_light[modelo de reg. multivariante]**
+
+* **.bg-purple_light[Modelo teórico]**: dadas una variable objetivo $Y$ y un conjunto $p$ de predictoras $(X_1, \ldots, X_p)$, asumimos que la relación entre ellas se pueda modelar mediante un modelo lineal (una combinación lineal)
+
+$$Y = f(X_1, \ldots, X_p) + \epsilon = \left(\beta_0 + \beta_1X_1 + \beta_pX_p\right) +\epsilon, \quad f:~\mathbb{R}^{p} \to \mathbb{R}$$ 
+
+
+$$\hat{y}_i = \hat{\beta}_0 + \hat{\beta}_1 x_{i, 1} + \ldots + \hat{\beta}_p x_{i, p} \text{  (ajuste)}, \quad \epsilon_i = y_i - \hat{y}_i \text{  (errores)}$$
+
+---
+
+# .orange[REGRESIÓN] .green[MULTIVARIANTE]
+
+
+El objetivo para obtener los **.bg-purple_light[coeficientes]** será el mismo: encontrar aquellos que **.bg-purple_light[minimizan la Sum of Squared Residuals o SSR (método de mínimos cuadrados)]**
+
+$$\hat{\boldsymbol{\beta}} =  \arg \min_{\boldsymbol{\beta} \in \mathbb{R}^{p+1}} \sum_{i=1}^{n} \hat{\epsilon}_{i}^2 =  \arg \min_{\boldsymbol{\beta} \in \mathbb{R}^{p+1}} \sum_{i=1}^{n} \left[y_i - \left(\beta_0 + \beta_1x_{i,1} + \ldots + \beta_px_{i, p} \right) \right]^2$$
+
+--
+
+&nbsp;
+
+La **.bg-purple_light[solución general matricial del método mínimos cuadrados]**  se obtiene como sigue:
+
+$$\hat{\boldsymbol{\beta}} = \left(\boldsymbol{X}^{T} \boldsymbol{X} \right)^{-1} \boldsymbol{X}^{T} \boldsymbol{Y}, \quad \boldsymbol{Y} = \left(y_1, \ldots, y_n \right)^{T}, \quad \boldsymbol{X} = \begin{pmatrix} 1 & x_{1,1} & \ldots & x_{1,p} \\ 1 & x_{2,1} & \ldots & x_{2,p} \\
+\vdots & \vdots & \ddots & \vdots \\ 1 & x_{n,1} & \ldots & x_{n,p}\end{pmatrix}$$
+
+---
+
+# .orange[HIPÓTESIS] reg. multivariante
+
+* **.bg-purple_light[Linealidad]**: se asume que la variable objetivo y las predictoras cumplen (en media) que
+
+$${\rm E} [Y | \left(X_1 = x_1, \ldots, X_p = x_p \right)] = \beta_0 + \beta_1 x_1 + \ldots + \beta_p x_p$$
+
+--
+
+* **.bg-purple_light[Homocedasticidad de los residuos]** los residuos tendrán media cero pero además se pide que ${\rm Var} [\epsilon | \left(X_1 = x_1, \ldots, X_p = x_p \right) ] = \sigma_{\epsilon}^2$, siendo $\sigma^2 < \infty$ una constante (es decir, los residuos visualizados deberán caer en una banda horizontal constante).
+
+--
+
+* **.bg-purple_light[Normalidad de los residuos]**: los residuos cumplirán además que $\epsilon \sim \mathcal{N} \left(0, \sigma_{\epsilon}^2 \right)$.
+
+--
+
+* **.bg-purple_light[Residuos incorrelados]**: para cualquier i,j, tendremos que ${\rm E} [ \epsilon_i \epsilon_j ] = 0$
+
+&nbsp;
+
+--
+
+Todas ellas se resumen en la siguiente
+
+$$(Y | \left(X_1 = x_1, \ldots, X_p = x_p \right)) \sim \mathcal{N} (\beta_0 + \beta_1x_1 + \ldots + \beta_px_p, \sigma_{\epsilon}^2)$$
+
+---
+
+# .orange[INTERPRETACIÓN] reg. multivariante
+
+$$(Y | \left(X_1 = x_1, \ldots, X_p = x_p \right)) \sim \mathcal{N} (\beta_0 + \beta_1x_1 + \ldots + \beta_px_p, \sigma_{\epsilon}^2)$$
+
+* El coeficiente $\beta_0$ representa la ordenada en el origen y sigue siendo el **.bg-purple_light[valor esperado de la respuesta cuando las predictoras son nulas]**, es decir, cuando $X_1 = \ldots = X_p = 0$
+
+* El coeficiente $\beta_j$, para un $j=1,\ldots,p$, representa el **.bg-purple_light[incremento medio esperado de la respuesta]** por cada **.bg-purple_light[incremento unitario de la predictora]** $X_j$ asumiendo que el **resto de predictoras** permanecen fijas
+
+
+---
+
+# .orange[INTERPRETACIÓN] reg. multivariante
+
+Vamos a hacer la misma receta simple de antes, solo que ahora en la primera línea enfrentamos `medv` a todas las variables
+
+```{r}
+rec_boston_multi <-
+  recipe(data = train_boston, medv ~ .) %>%
+  step_mutate(across(all_numeric_predictors(),
+                     function(x) { ifelse(abs(scores(x, type = "z")) > 2, NA, x) })) %>% 
+  step_impute_mean(all_numeric_predictors()) %>% 
+  step_zv(all_predictors())  # filtro cero varianza
+
+wflow_multi <-
+  workflow() %>%
+  add_recipe(rec_boston_multi) %>%
+  add_model(reg_lineal)
+```
+
+
+---
+
+# .orange[INTERPRETACIÓN] reg. multivariante
+
+```{r}
+mod_multi <- wflow_multi %>% fit(data = train_boston)
+tidy(mod_multi) 
+```
+
+
+El monstruoso modelo queda como
+
+$$ medv = 35.9 - 0.099*crim + 0.044*zn - 0.005*indus + 1.561*chas - 16.203*nox + 3.725*rm +  0.0152 * age  -1.432 * dis  0.287 * rad  - 0.012 * tax  - 0.971 * ptratio + 0.009*black - 0.547 * lstat$$
+
+
+
+---
+
+# .orange[REG. MULTIVARIANTE] .green[DIAGNOSIS]
+
+.pull-left[
+
+Amén de las gráficas ya mencionados, cuando introducimos más variables aparece una nueva gráfica sobre **.bg-purple_light[colinearidad]**, algo que podemos prevenir con `step_corr()` en la receta (ninguna de ellas debe estar en la zona de riesgo marcada en roja). La **.bg-purple_light[multicolinealidad]** puede producir una reducción de la precisión de las estimaciones (incluso invirtiendo el signo de los coeficientes).
+
+```{r eval = FALSE}
+check_model(mod_multi %>% extract_fit_engine())
+```
+
+]
+
+.pull-right[
+
+```{r echo = FALSE, out.width = "90%"}
+check_model(mod_multi %>% extract_fit_engine())
+```
+
+]
+
+
+---
+
+# .orange[REG. MULTIVARIANTE] .green[EVALUACIÓN]
+
+Podemos hacer la **.bg-purple_light[evaluación de varios modelos]** a la vez con `compare_performance()`
+
+```{r}
+# comparativa
+compare_performance(mod1 %>% extract_fit_engine(),
+                    mod2 %>% extract_fit_engine(),
+                    mod_multi %>% extract_fit_engine())
+```
+
+Aparentemente, si nos fijamos solo en la bondad de ajuste $R^2$, parece que hemos mejorado bastante (de explicar el 49-55% de la información a superar el 75%) aunque quizás no lo esperado (¡hemos metido 14 predictoras!).
+
+
+
+---
+
+# .orange[REG. MULTIVARIANTE] .green[DIAGNOSIS]
+
+
+No solo podemos tener problemas de colinealidad sino **.bg-purple_light[variables que no aporten al modelo]**, variables cuya influencia en la variable objetivo sea no significativo, algo que podemos cotejar en la columna `p.value`: por ejemplo, en `indus` sale un valor de $0.94$, es decir, que no hay evidencias suficientes para rechazar la hipótesis nula de que $\beta_{indus} = 0$. Con $\alpha = 0.05$, también sucede en `chas` y en `age`
+
+**.bg-purple_light[¿Cuál quitar y en qué orden?]**
+
+```{r}
+tidy(mod_multi) 
+```
+
+
+
+---
+
+# .orange[SELECCIÓN DE MODELOS]
+
+Si te has fijado hay unas columnas que no hemos comentado: las que empiezan por **.bg-purple_light[AIC]** y **.bg-purple_light[BIC]**
+
+```{r}
+glance(mod_multi) 
+```
+
+
+Ambos son dos de los **.bg-purple_light[criterios de información]** más utilizados en la **.bg-purple_light[selección de modelos]**, ya que ambos nos ofrecen una medida que balancea la calidad del modelo frente al número de predictores empleados
+
+* **.bg-purple_light[BIC (Bayesian Information Criterion)]**: definido como $BIC = -2\mathcal{L}(modelo) + ln(n)*k$
+
+* **.bg-purple_light[AIC (Akaike Information Criterion)]**: definido como $AIC = -2\mathcal{L}(modelo) + 2*k$
+
+
+---
+
+# .orange[SELECCIÓN DE MODELOS]
+
+* **.bg-purple_light[BIC (Bayesian Information Criterion)]**: definido como $BIC = -2\mathcal{L}(modelo) + ln(n)*k$
+
+* **.bg-purple_light[AIC (Akaike Information Criterion)]**: definido como $AIC = -2\mathcal{L}(modelo) + 2*k$
+
+&nbsp;
+
+En ambos, $k$ representa el número de parámetros a estimar (en el caso de la reg. lineal $k=p+2$ ya que debemos estimar $p+1$ y la varianza residual) y $\mathcal{L} (modelo)$ representa la logverosimilitud del modelo (como de probable es que, si el modelo fuese cierto, hayamos obtenido los resultados que hemos obtenido), definida como $ln(P(observado | modelo))$
+
+---
+
+# .orange[SELECCIÓN DE MODELOS]
+
+* **.bg-purple_light[BIC (Bayesian Information Criterion)]**: definido como $BIC = -2\mathcal{L}(modelo) + ln(n)*k$
+
+* **.bg-purple_light[AIC (Akaike Information Criterion)]**: definido como $AIC = -2\mathcal{L}(modelo) + 2*k$
+
+&nbsp;
+
+La **.bg-purple_light[principal diferencia]** entre ambos es el **.bg-purple_light[factor de penalización]** (en BIC es $ln(n)$ y en AIC es $2$),  por lo que cuando crece $n$, **.bg-purple_light[BIC penaliza más el sobreajuste]** (a menor AIC/AIC, mejor). El criterio BIC no solo es recomendable por penalizar más el sobreajuste sino que además es el único de los dos que es consistente (ver Shao, 1993): si el tamaño muestral fuera suficiente grande, el **.bg-purple_light[BIC nos garantiza acabar eligiendo el modelo correcto]**. 
+
+
+---
+
+# .orange[SELECCIÓN DE MODELOS]
+
+Para ello haremos uso de `stepAIC()` que aún no está disponible en tidymodels (lo estará), así que hornearemos la receta y se la pasaremos manualmente a `lm()` para ejecutar la regresión (a priori contra todas)
+
+```{r}
+boston_prep <- bake(rec_boston_multi %>% prep(), new_data = NULL)
+ajuste_boston_multi <- lm(data = boston_prep, medv ~ .)
+```
+
+--
+
+Tras ello haremos uso de la función `stepAIC()` del paquete `{MASS}`, y con el argumento `k = ...` **.bg-purple_light[decidiremos si es BIC o AIC en función de la penalización]** usada. Dados $p$ predictores, `stepAIC()` realiza la búsqueda entre los $2^p$ modelos posibles mediante una **.bg-purple_light[selección stepwise]**: de forma iterativa, irá añadiendo predictoras que nos bajen el AIC/BIC y eliminando aquellas que lo incrementen.
+
+
+---
+
+# .orange[SELECCIÓN DE MODELOS]
+
+El **.bg-purple_light[argumento opcional direction]** nos permitirá decidir si queremos que se añaden/eliminen a la vez (`direction = "both"`), se vayan añadiendo desde cero (`direction = "forward"`) o se vayan eliminando desde un modelo saturado (`direction = "backward"`)
+
+
+```{r eval = FALSE}
+library(MASS)
+modAIC <- stepAIC(ajuste_boston_multi, k = 2)
+modBIC <- stepAIC(ajuste_boston_multi, k = log(nrow(train_boston)))
+```
+
+
+---
+
+
+# .orange[SELECCIÓN DE MODELOS]
+
+En cada paso de la iteración se nos mostrará una lista ordenada de qué variables harían descender más dicho criterio. Tras decidir su siguiente paso, vuelve a mostarnos la información (hasta que llega un punto en el que no hacer nada es la mejor opción, la fila encabezada por `<none>`).
+
+```{r}
+library(MASS)
+modAIC <- stepAIC(ajuste_boston_multi, k = 2)
+```
+
+---
+
+# .orange[SELECCIÓN DE MODELOS]
+
+
+Con `summary()` nos resume el modelo final elegido, aquel que enfrenta a `medv` con `crim + zn + chas + nox + rm + dis + rad +  tax + ptratio + black + lstat` (ha eliminado 2 variables) 
+
+```{r}
+summary(modAIC)
+```
+
+
+
+---
+
+# .orange[SELECCIÓN DE MODELOS]
+
+
+```{r}
+modBIC <- stepAIC(ajuste_boston_multi, k = log(nrow(train_boston)))
+```
+
+---
+
+# .orange[SELECCIÓN DE MODELOS]
+
+
+Con `summary()` nos resume el modelo final elegido, aquel que enfrenta a `medv` con `crim + zn +  nox + rm + dis + rad +  tax + ptratio + black + lstat` (ha eliminado 3 variables) 
+
+```{r}
+summary(modBIC)
+```
+
+---
+
+# .orange[RECETA]
+
+
+Con las variables seleccionadas en cada criterio, "rescribimos" la receta indicándole solo esas variables
+
+
+```{r}
+rec_boston_AIC <-
+  recipe(data = train_boston, medv ~ crim + zn + chas +  nox + rm + dis + rad +  tax + ptratio + black + lstat) %>% #<<
+  step_mutate(across(all_numeric_predictors(),
+                     function(x) { ifelse(abs(scores(x, type = "z")) > 2, NA, x) })) %>% 
+  step_impute_mean(all_numeric_predictors()) %>% 
+  step_zv(all_predictors())
+
+rec_boston_BIC <-
+  recipe(data = train_boston, medv ~ crim + zn +  nox + rm + dis + rad +  tax + ptratio + black + lstat) %>% #<<
+  step_mutate(across(all_numeric_predictors(),
+                     function(x) { ifelse(abs(scores(x, type = "z")) > 2, NA, x) })) %>% 
+  step_impute_mean(all_numeric_predictors()) %>% 
+  step_zv(all_predictors())
+```
+
+
+---
+
+
+# .orange[AJUSTE]
+
+Generamos los dos flujos y el ajuste
+
+
+```{r}
+wflow_AIC <-
+  workflow() %>% add_recipe(rec_boston_AIC) %>%
+  add_model(reg_lineal)
+mod_AIC <- wflow_AIC %>% fit(data = train_boston)
+
+wflow_BIC <-
+  workflow() %>%
+  add_recipe(rec_boston_BIC) %>%
+  add_model(reg_lineal)
+mod_BIC <- wflow_BIC %>% fit(data = train_boston)
+```
+
+---
+
+# .orange[AJUSTE]
+
+```{r}
+tidy(mod_AIC)
+```
+
+
+---
+
+# .orange[AJUSTE]
+
+```{r}
+tidy(mod_BIC)
+```
+
+---
+
+# .orange[DIAGNOSIS]
+
+.pull-left[
+
+```{r eval = FALSE}
+check_model(mod_AIC %>% extract_fit_engine())
+```
+
+]
+
+
+.pull-right[
+
+```{r echo = FALSE, out.width = "90%"}
+check_model(mod_AIC %>% extract_fit_engine())
+```
+
+]
+
+---
+
+# .orange[DIAGNOSIS]
+
+Con el AIC no se rechaza que exista una tendencia cuadrática entre errores y predicciones (**.bg-purple_light[violando la hipótesis de linealidad]**).
+
+```{r}
+ajuste_AIC <- mod_AIC %>% extract_fit_engine()
+lm(ajuste_AIC$residuals ~ I(ajuste_AIC$fitted.values^2) + ajuste_AIC$fitted.values) %>% anova()
+```
+
+
+Tampoco parece cumplirse la **.bg-purple_light[homocedasticidad]**
+
+```{r}
+check_heteroscedasticity(ajuste_AIC)
+```
+
+---
+
+# .orange[DIAGNOSIS]
+
+.pull-left[
+
+```{r eval = FALSE}
+check_model(mod_BIC %>% extract_fit_engine())
+```
+
+]
+
+
+.pull-right[
+
+```{r echo = FALSE, out.width = "90%"}
+check_model(mod_BIC %>% extract_fit_engine())
+```
+
+]
+
+---
+
+
+# .orange[DIAGNOSIS]
+
+Con el BIC tampoco se rechaza que exista una tendencia cuadrática entre errores y predicciones (**.bg-purple_light[violando la hipótesis de linealidad]**).
+
+```{r}
+ajuste_BIC <- mod_BIC %>% extract_fit_engine()
+lm(ajuste_BIC$residuals ~ I(ajuste_BIC$fitted.values^2) + ajuste_BIC$fitted.values) %>% anova()
+```
+
+
+Tampoco parece cumplirse la **.bg-purple_light[homocedasticidad]**
+
+```{r}
+check_heteroscedasticity(ajuste_BIC)
+```
+
+
+---
+
+# .orange[EVALUACIÓN]
+
+Vamos a evaluar los 5 modelos que tenemos
+
+```{r}
+# comparativa
+compare_performance(mod1 %>% extract_fit_engine(), mod2 %>% extract_fit_engine(),
+                    mod_multi %>% extract_fit_engine(),
+                    mod_AIC %>% extract_fit_engine(), mod_BIC %>% extract_fit_engine())
+```
+
+Observa que **.bg-purple_light[apenas hay diferencia en la bondad de ajuste]** entre el modelo saturado y las 10 predictoras supervivientes tras BIC (o las 11 del AIC).  Tenemos un **.bg-purple_light[modelo igual de bueno pero con 2-3 variables menos]** (más interpretable y menos sobreajustado).
+
+---
+
+
+# .orange[BIC MEJORADO]
+
+Vamos a **.bg-purple_light[volver a lanzar los AIC y BIC pero con alguna mejora en la receta]**: vamos a tratar `chas`  como binaria (porque lo es), `rad` como factor (es cuali), vamos a aplicar YeoJohnson en las predictoras y la raíz cuadrada a la objetivo, y crear dummys para esa cuali creada (otra opción a veces útil: estandarizar predictoras en media y varianza con `step_normalize()`)
+
+---
+
+# .orange[RECETA MEJORADA] 
+
+```{r}
+rec_boston_mejorada <-
+  recipe(data = train_boston, medv ~ .) %>%
+  # Sacamos chas de numeric_predictors
+  update_role(chas, new_role = "binary") %>%
+  step_mutate(rad = as_factor(rad)) %>% 
+  update_role(rad, new_role = "cuali") %>%
+  step_mutate(across(all_numeric_predictors(),
+                     function(x) { ifelse(abs(scores(x, type = "z")) > 2, NA, x) })) %>% 
+  step_impute_mean(all_numeric_predictors()) %>% 
+  step_sqrt(medv) %>%
+  step_YeoJohnson(all_numeric_predictors()) %>%
+  # umbral de correlación
+  step_corr(all_numeric_predictors(), threshold = 0.9) %>%
+  step_dummy(all_nominal_predictors()) %>% 
+  step_zv(all_predictors())
+
+# Horneado
+boston_prep_mejorada <- bake(rec_boston_mejorada %>% prep(), new_data = NULL)
+ajuste_boston_mejorada <- lm(data = boston_prep_mejorada, medv ~ .)
+```
+
+
+---
+
+# .orange[CRITERIO AIC]
+
+Ahora AIC nos reduce a 10 variables (antes eran 11)
+
+```{r}
+# AIC
+mod_AIC_mejorada <- stepAIC(ajuste_boston_mejorada, k = 2)
+```
+
+---
+
+# .orange[CRITERIO BIC]
+
+Ahora BIC nos reduce a 8 variables (antes eran 10)
+
+```{r}
+# BIC
+mod_BIC_mejorada <- stepAIC(ajuste_boston_mejorada, k = log(nrow(train_boston)))
+```
+
+---
+
+# .orange[BIC MEJORADO]
+
+Por simplificar, vamos a quedarnos con el BIC de la receta mejorada así que "rescribimos" la receta indicándole solo esas variables
+
+
+```{r}
+rec_boston_BIC_mejorada <-
+  recipe(data = train_boston, medv ~ nox + rm + age + dis + tax + ptratio + black + lstat) %>%
+  step_mutate(across(all_numeric_predictors(),
+                     function(x) { ifelse(abs(scores(x, type = "z")) > 2, NA, x) })) %>% 
+  step_impute_mean(all_numeric_predictors()) %>% 
+  step_sqrt(medv) %>%
+  step_YeoJohnson(all_numeric_predictors()) %>%
+  # umbral de correlación
+  step_corr(all_numeric_predictors(), threshold = 0.9) %>%
+  step_dummy(all_nominal_predictors()) %>% 
+  step_zv(all_predictors())
+
+wflow_BIC_mejorada <-
+  workflow() %>% add_recipe(rec_boston_BIC_mejorada) %>% add_model(reg_lineal)
+mod_BIC_mejorada <- wflow_BIC_mejorada %>% fit(data = train_boston)
+```
+
+---
+
+# .orange[AJUSTE]
+
+Fíjate que ya ninguna variable es no significativa
+
+```{r}
+tidy(mod_BIC_mejorada)
+```
+
+
+---
+
+# .orange[DIAGNOSIS]
+
+
+.pull-left[
+
+
+Fíjate cómo la mayoría de las hipótesis parecen cumplirse (vamos a comprobarlo ahora numéricamente)
+
+```{r eval = FALSE}
+check_model(mod_BIC_mejorada %>%  extract_fit_engine())
+```
+
+]
+
+.pull-right[
+
+```{r echo = FALSE, out.width = "90%"}
+check_model(mod_BIC_mejorada %>%  extract_fit_engine())
+```
+
+]
+
+
+---
+
+# .orange[DIAGNOSIS]
+
+Hemos conseguido que no exista tendencia (ni lineal ni cuadrática) entre los residuos y las predicciones
+
+**.bg-green_light[Linealidad conseguida]**
+
+
+```{r}
+ajuste_BIC_mejorado <- mod_BIC_mejorada %>%  extract_fit_engine()
+
+lm(ajuste_BIC_mejorado$residuals ~ ajuste_BIC_mejorado$fitted.values) %>% anova()
+lm(ajuste_BIC_mejorado$residuals ~ I(ajuste_BIC_mejorado$fitted.values^2) + ajuste_BIC_mejorado$fitted.values) %>% anova()
+```
+
+---
+
+# .orange[DIAGNOSIS]
+
+Hemos conseguido incluso homocedasticidad en los residuos
+
+**.bg-green_light[Homocedasticidad conseguida]**
+
+
+```{r}
+check_heteroscedasticity(ajuste_BIC_mejorado) 
+```
+
+También tenemos **.bg-green_light[residuos incorrelados]**
+
+```{r}
+durbinWatsonTest(ajuste_BIC_mejorado)
+```
+
+---
+
+# .orange[DIAGNOSIS]
+
+Incluso la normalidad en los residuos se cumple en el test de Kolmogorov-Smirnov
+
+**.bg-green_light[Normalidad (casi) de los residuos conseguida]**
+
+
+
+```{r}
+ols_test_normality(ajuste_BIC_mejorado)
+```
+
+---
+
+# .orange[EVALUACIÓN]
+
+Y encima hemos mejorado la bondad de ajuste respecto al resto de modelos.
+
+```{r}
+# comparativa
+compare_performance(mod1 %>% extract_fit_engine(), mod2 %>% extract_fit_engine(),
+                    mod_multi %>% extract_fit_engine(),
+                    mod_AIC %>% extract_fit_engine(), mod_BIC %>% extract_fit_engine(),
+                    mod_BIC_mejorada %>% extract_fit_engine())
+```
+
+
+---
+
+# .orange[REGRESIÓN] .green[PENALIZADA]
+
+Por último vamos a hablar de lo que se conoce como **.bg-purple_light[regresión penalizada o regularizada]**. Las estrategias de regularización incorporan ya en la función a optimizar una **.bg-purple_light[penalización]** (similar a lo que hacía paso a paso el BIC/AIC, pero "del tirón") con el objetivo de **.bg-purple_light[reducir la varianza]** y evitar el sobreajuste.
+
+&nbsp;
+
+Las dos principales técnicas se conoce como **.bg-purple_light[regresión LASSO o L1]** y **.bg-purple_light[regresión ridge o L2]**
+
+
+
+---
+
+# .orange[REGRESIÓN] .green[PENALIZADA]
+
+En el caso de la regresión lineal ordinaria que estamos realizando 
+
+$$\hat{\boldsymbol{\beta}} = \arg \min_{\boldsymbol{\beta} \in \mathbb{R}^{p+1}} \left\| \boldsymbol{Y} - \boldsymbol{\beta} \boldsymbol{X} \right\|^2 = \arg \min_{\boldsymbol{\beta} \in \mathbb{R}^{p+1}} \left\| \boldsymbol{\epsilon} \right\|^2 =\arg \min_{\boldsymbol{\beta} \in \mathbb{R}^{p+1}} \sum_{i=1}^{n} \epsilon_{i}^{2}$$
+
+* **.bg-purple_light[Regresión ridge (L2)]**: consiste en añadir una penalización (con factor $\lambda$) en función de la **.bg-purple_light[suma del cuadrado de los coeficientes]**, lo que se conoce como norma L2
+
+$$\hat{\boldsymbol{\beta}} = \arg \min_{\boldsymbol{\beta} \in \mathbb{R}^{p+1}} \left[ \left\| \boldsymbol{Y} - \boldsymbol{\beta} \boldsymbol{X} \right\|^2  + \lambda \sum_{j=1}^{p} \beta_{j}^{2}\right] = \arg \min_{\boldsymbol{\beta} \in \mathbb{R}^{p+1}} \left[ \left\| \boldsymbol{Y} - \boldsymbol{\beta} \boldsymbol{X} \right\|^2  + \lambda \left\| \boldsymbol{\beta} \right\|_{2}^{2}\right]$$
+
+Dicha técnica de regularización consigue reducir de forma proporcional el valor de todos los coeficientes del modelo. La **.bg-purple_light[agresividad de la penalización]** está controlada por $\lambda$ (solo se anula los coeficientes si $\lambda = \infty$)
+
+
+---
+
+# .orange[REGRESIÓN] .green[PENALIZADA]
+
+En el caso de la regresión lineal ordinaria que estamos realizando 
+
+$$\hat{\boldsymbol{\beta}} = \arg \min_{\boldsymbol{\beta} \in \mathbb{R}^{p+1}} \left\| \boldsymbol{Y} - \boldsymbol{\beta} \boldsymbol{X} \right\|^2 = \arg \min_{\boldsymbol{\beta} \in \mathbb{R}^{p+1}} \left\| \boldsymbol{\epsilon} \right\|^2 =\arg \min_{\boldsymbol{\beta} \in \mathbb{R}^{p+1}} \sum_{i=1}^{n} \epsilon_{i}^{2}$$
+
+* **.bg-purple_light[Regresión LASSO (L1)]**: consiste en añadir una penalización (con factor $\lambda$) en función de la **.bg-purple_light[suma del valor absoluto de los coeficientes]**, lo que se conoce como norma L1
+
+$$\hat{\boldsymbol{\beta}} = \arg \min_{\boldsymbol{\beta} \in \mathbb{R}^{p+1}} \left[ \left\| \boldsymbol{Y} - \boldsymbol{\beta} \boldsymbol{X} \right\|^2  + \lambda \sum_{j=1}^{p} \left| \beta_{j} \right| \right] = \arg \min_{\boldsymbol{\beta} \in \mathbb{R}^{p+1}} \left[ \left\| \boldsymbol{Y} - \boldsymbol{\beta} \boldsymbol{X} \right\|^2  + \lambda \left\| \boldsymbol{\beta} \right\|_{1}\right]$$
+
+
+Dicha técnica de regularización es capaz de hacer una **.bg-purple_light[selección de variables predictoras]** ya que fuerza que sean cero. Dado que estos métodos de regularización actúan sobre la magnitud de los coeficientes del modelo, todos deben de estár en la misma escala, así que en estos casos es **.bg-purple_light[necesario estandarizar por media y varianza]** las variables.
+
+---
+
+# .orange[REGRESIÓN] .green[PENALIZADA]
+
+Ambas penalizaciones pueden ser **.bg-purple_light[combinadas]** haciendo uso de lo que se conoce como **.bg-purple_light[elastic net]**
+
+
+$$\hat{\boldsymbol{\beta}} = \arg \min_{\boldsymbol{\beta} \in \mathbb{R}^{p+1}} \left[ \left\| \boldsymbol{Y} - \boldsymbol{\beta} \boldsymbol{X} \right\|^2  + \lambda \left(\alpha  \sum_{j=1}^{p} \left| \beta_j \right| + \frac{1 - \alpha}{2} \sum_{j=1}^{p}  \beta_{j}^2 \right)\right]$$
+
+* **.bg-purple_light[Penalización]**: el parámetro $\lambda$ (a mayor valor, más agresiva será penalizando el sobreajuste)
+
+* **.bg-purple_light[Mixtura]**: el parámetro $\alpha$ 
+(siempre entre 0 y 1)
+
+---
+
+# .orange[REGRESIÓN] .green[PENALIZADA]
+
+Para ello ahora vamos a generar validación cruzada ya que ahora sí que tenemos dos parámetros que optimizar
+
+```{r echo = FALSE}
+set.seed(1234567)
+```
+
+```{r}
+# Partición
+split_boston <- initial_split(boston, prop = 0.8)
+train_boston <- training(split_boston)
+test_boston <- testing(split_boston)
+```
+
+```{r echo = FALSE}
+set.seed(1234567)
+```
+
+```{r}
+# Validación cruzada
+validation_cv_boston <- 
+  vfold_cv(data = train_boston, v = 4, repeats = 10)
+```
+
+---
+
+# .orange[REGRESIÓN] .green[PENALIZADA]
+
+Vamos a aplicar la receta mejorada usada en el último BIC pero con todas las variables a priori (y normalizando predictoras)
+
+```{r}
+rec_boston_elastic <-
+  recipe(data = train_boston, medv ~ .) %>%
+  update_role(chas, new_role = "binary") %>% 
+  step_mutate(across(all_numeric_predictors(),
+                     function(x) { ifelse(abs(scores(x, type = "z")) > 2, NA, x) })) %>% 
+  step_impute_mean(all_numeric_predictors()) %>% 
+  step_sqrt(medv) %>%
+  step_YeoJohnson(all_numeric_predictors()) %>%
+  # umbral de correlación
+  step_corr(all_numeric_predictors(), threshold = 0.9) %>%
+  step_dummy(all_nominal_predictors()) %>% 
+  step_normalize(all_predictors()) %>% 
+  step_zv(all_predictors())
+```
+
+---
+
+# .orange[REGRESIÓN] .green[PENALIZADA]
+
+
+El modelo ahora vendrá definido por el motor `glmnet` donde `mixture` será el parámetro $\alpha$ y `penalty` el parámetro $\lambda$
+
+```{r}
+elastic_net <-
+  linear_reg(mixture = tune("alpha"), penalty = tune("lambda")) %>%
+  set_mode("regression") %>% set_engine("glmnet")
+```
+
+Y vamos a generar un grid de parámetros (200 regresiones) usando `penalty()` (fíjate que está en escala logarítmica, es decir, que -2 es una penalización de 0.01 y 2 de 100)
+
+```{r}
+grid_elastic_net <-
+  expand_grid("alpha" = seq(0, 1, l = 5),
+              "lambda" = grid_regular(penalty(range = c(-4, 1)), levels = 40) %>%
+                pull(penalty))
+
+wflow_elastic <-
+  workflow() %>% add_recipe(rec_boston_elastic) %>% add_model(elastic_net)
+```
+
+---
+
+# .orange[REGRESIÓN] .green[PENALIZADA]
+
+```{r}
+mod_elastic <- wflow_elastic %>%
+  tune_grid(resamples = validation_cv_boston, grid = grid_elastic_net,
+            control = control_grid(verbose = TRUE))
+```
+
+Como antes podemos usar `select_best()` y `collect_metrics()`
+
+```{r}
+mod_elastic %>% select_best("rsq")
+mod_elastic %>% collect_metrics()
+```
+
+
+---
+
+# .orange[REGRESIÓN] .green[PENALIZADA]
+
+.pull-left[
+
+
+Con `autoplot()` se nos genera una gráfica de las métricas en función de los parámetros (es un ggplot que podemos personalizar a nuestro gusto)
+
+```{r eval = FALSE}
+mod_elastic %>% autoplot()
+```
+
+]
+
+.pull-right[
+
+```{r echo = FALSE, out.width = "90%"}
+mod_elastic %>% autoplot()
+```
+
+]
+
+---
+
+# .orange[REGRESIÓN] .green[PENALIZADA]
+
+Para estar en igualdad de condiciones con el resto de modelos que no tenían validación, nos quedamos con los mejores parámetros y lo volvemos a lanzar de forma "simple" solo en train.
+
+```{r}
+elastic_net <-
+  linear_reg(mixture = 1, penalty = 0.00257) %>%
+  set_mode("regression") %>% set_engine("glmnet")
+
+wflow_elastic <-
+  workflow() %>% add_recipe(rec_boston_elastic) %>% add_model(elastic_net)
+
+mod_elastic <-
+  wflow_elastic %>% fit(train_boston)
+```
+
+---
+
+# .orange[REGRESIÓN] .green[PENALIZADA]
+
+Nos indica que ha eliminado  `crim` y `zn`
+
+```{r}
+tidy(mod_elastic)
+```
+
+---
+
+# .orange[REGRESIÓN] .green[PENALIZADA]
+
+Fíjate que podemos incluso jugar con la penalización para ver que variables sobreviven, es decir, ver que **.bg-purple_light[variables son más importantes]** para la regresión penalizada.
+
+```{r}
+tidy(mod_elastic, penalty = 0.3)
+```
+
+---
+
+# .orange[PREDICCIÓN]
+
+Vamos a **.bg-purple_light[predecir en test]** con los 7 modelos probados
+
+```{r}
+# Predecimos test
+fit_1 <- wflow_boston_1 %>% last_fit(split = split_boston)
+fit_2 <- wflow_boston_2 %>% last_fit(split = split_boston)
+fit_multi <- wflow_multi %>% last_fit(split = split_boston)
+fit_AIC <- wflow_AIC %>% last_fit(split = split_boston)
+fit_BIC <- wflow_BIC %>% last_fit(split = split_boston)
+fit_BIC_mejorado <- wflow_BIC_mejorada %>% last_fit(split = split_boston)
+fit_elastic <- wflow_elastic %>% last_fit(split = split_boston)
+
+# Modelos
+modelos <- list(fit_1, fit_2, fit_multi,
+                fit_BIC, fit_AIC,
+                fit_BIC_mejorado, fit_elastic)
+
+```
+
+
+---
+
+# .orange[PREDICCIÓN]
+
+Haciendo uso de  `{purrr}` podemos aplicar acciones a todos los modelos a la vez
+
+```{r}
+# Metricas
+metricas <- imap_dfr(modelos, collect_metrics, .id = "model") %>% 
+  mutate(model =
+           case_when(model == "1" ~ "lstat", model == "2" ~ "rm", model == "3" ~ "saturado",
+                     model == "4" ~ "AIC", model == "5" ~ "BIC", model == "6" ~ "BIC mejorado",
+                     model == "7" ~ "elastic"))
+metricas
+```
+
+---
+
+# .orange[PREDICCIÓN]
+
+Para las predicciones tenemos que acordarnos que en dos de los modelos hemos transformado la objetivo (y por tanto las predicciones) tomando la raíz, que debemos deshacer
+
+```{r}
+
+# Predicciones
+predicciones <- 
+  bind_rows(lapply(modelos, collect_predictions), .id = "model") %>% 
+  mutate(model =
+           case_when(model == "1" ~ "lstat", model == "2" ~ "rm", model == "3" ~ "saturado",
+                     model == "4" ~ "AIC", model == "5" ~ "BIC", model == "6" ~ "BIC mejorado",
+                     model == "7" ~ "elastic")) %>%
+  mutate(medv = ifelse(model %in% c("BIC mejorado", "elastic"), medv^2, medv)) %>% 
+   mutate(.pred = ifelse(model %in% c("BIC mejorado", "elastic"), .pred^2, .pred))
+predicciones
+```
+
+---
+
+# .orange[PREDICCIÓN]
+
+.pull-left[
+
+```{r eval = FALSE}
+# Gráficos en test
+ggplot(data = predicciones,
+       aes(x = .pred, y = medv)) +
+  geom_point(aes(color = model),
+             alpha = 0.5,
+             size = 1.5) +
+  scale_color_colorblind() +
+  # Diagonal
+  geom_abline(intercept = 0, slope = 1,
+              color = "black", size = 1) +
+  facet_wrap(~model) +
+  theme_minimal() +
+  labs(title = "Resultados de la regresión lineal univariante",
+       subtitle =
+         "Valores deberían estar cercanos a la diagonal",
+       caption =
+         "Autor: Javier Álvarez Liébana | Datos: Boston dataset",
+       x = "Predicciones",
+       y = "Valores inmobiliarios reales",
+       color = "Modelos")
+```
+
+]
+
+.pull-right[
+
+```{r echo = FALSE, out.width = "90%"}
+# Gráficos en test
+ggplot(data = predicciones,
+       aes(x = .pred, y = medv)) +
+  geom_point(aes(color = model),
+             alpha = 0.5,
+             size = 1.5) +
+  scale_color_colorblind() +
+  # Diagonal
+  geom_abline(intercept = 0, slope = 1,
+              color = "black", size = 1) +
+  facet_wrap(~model) +
+  theme_minimal() +
+  labs(title = "Resultados de la regresión lineal univariante",
+       subtitle =
+         "Valores deberían estar cercanos a la diagonal",
+       caption =
+         "Autor: Javier Álvarez Liébana | Datos: Boston dataset",
+       x = "Predicciones",
+       y = "Valores inmobiliarios reales",
+       color = "Modelos")
+```
+
+]
+
+---
+
 # .orange[RECURSOS] y .green[BIBLIOGRAFÍA]
 
 &nbsp;
@@ -16648,7 +19726,7 @@ rf_tune_par %>% select_best("roc_auc")
 📚 **«Quantitative Graphics in Statistics: A Brief History»**. Beniger and Robyn (1978) <https://github.com/dadosdelaplace/teaching/blob/main/bdba-pca-clustering-2022/biblio/graphics_beniger_robin_1978.pdf>
  
  
-💻 **«Analizando datos, visualizando información, contando historias»** (curso de dataviz en R). Álvarez-Liébana y Valverde-Castilla (2022) <https://dadosdelaplace.github.io/curso-dataviz-ECI-2022>
+💻 **«Analizando datos, visualizando información, rasando historias»** (curso de dataviz en R). Álvarez-Liébana y Valverde-Castilla (2022) <https://dadosdelaplace.github.io/curso-dataviz-ECI-2022>
 
 📚 **«40 years of boxplots»**. Wickham and Stryjewski (2011) <https://github.com/dadosdelaplace/teaching/blob/main/bdba-pca-clustering-2022/biblio/boxplot_Wickham_Stryjewski_2011.pdf>
  
