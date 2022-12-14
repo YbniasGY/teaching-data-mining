@@ -270,7 +270,7 @@ class: inverse center middle
 
 .pull-right[
 
-#### [CLASE 7: MODELIZANDO CON TIDYMODELS (KNN)](#clase-7)
+#### [CLASE 7: TIDYMODELS](#clase-7)
 
 #### [CLASE 8: PROFUNDIZANDO EN TIDYMODELS (KNN)](#clase-8)
 
@@ -278,7 +278,9 @@ class: inverse center middle
 
 #### [CLASE 10: ÁRBOLES DE CLASIFICACIÓN/REGRESIÓN](#clase-10)
 
-#### [CLASE 11: REGRESIÓN LINEAL MULTIVARIANTE](#clase-11)
+#### [CLASE 11: REG. LINEAL MULTI](#clase-11)
+
+#### [CLASE 12: REGRESIÓN LOGÍSTICA Y GLM](#clase-12)
 
 ]
 
@@ -18913,7 +18915,7 @@ Ambos son dos de los **.bg-purple_light[criterios de información]** más utiliz
 
 &nbsp;
 
-En ambos, $k$ representa el número de parámetros a estimar (en el caso de la reg. lineal $k=p+2$ ya que debemos estimar $p+1$ y la varianza residual) y $\mathcal{L} (modelo)$ representa la logverosimilitud del modelo (como de probable es que, si el modelo fuese cierto, hayamos obtenido los resultados que hemos obtenido), definida como $ln(P(observado | modelo))$
+En ambos, $k$ representa el número de parámetros a estimar (en el caso de la reg. lineal $k=p+2$ ya que debemos estimar $p+1$ y la varianza residual) y $\mathcal{L} (modelo)$ representa la log-verosimilitud del modelo (como de probable es que, si el modelo fuese cierto, hayamos obtenido los resultados que hemos obtenido), definida como $ln(P(observado | modelo))$
 
 ---
 
@@ -19668,6 +19670,957 @@ ggplot(data = predicciones,
 ```
 
 ]
+
+---
+
+class: inverse center middle
+name: clase-12
+
+
+# CLASE 12: regresión logística y glm
+
+&nbsp;
+
+### [Intro teórica: reg. logística](#intro-teoria-logit)
+
+### [Reg. logística múltiple](#logit-multiple)
+
+### [Modelos lineales generalizados (glm)](#glm)
+
+---
+
+name: intro-teoria-logit
+
+# .orange[REGRESIÓN] .green[LOGÍSTICA]
+
+ 
+Vamos a cargar un archivo llamado `manifd.rda` (las extensiones `.rda` y `.RData` son archivos nativos de `R` que se cargan simplemente con `load()`)
+
+
+
+```{r}
+load("./datos/manif.rda")
+# convertimos a tibble
+manif <- as_tibble(manif)
+glimpse(manif)
+```
+
+---
+
+# .orange[REGRESIÓN] .green[LOGÍSTICA]
+
+
+Como ves en él solo tenemos **.bg-purple_light[dos variables]**: la edad de la persona y si asistió (`man = 1`) o no (`man = 0`) a una manifestación. Así está repartido
+
+```{r}
+manif %>% count(man)
+```
+
+Hasta ahora solo hemos clasificado con árboles y knn. **.bg-purple_light[¿Podríamos usar la regresión lineal de alguna manera?]**
+
+---
+
+# .orange[REGRESIÓN] .green[LOGÍSTICA]
+
+ 
+
+.pull-left[
+
+
+
+```{r eval = FALSE}
+# Ploteado
+ggplot(manif %>%
+         mutate(man = factor(man, labels = c("Sí", "No"))),
+       aes(x = edad, y = man)) +
+  geom_point(aes(color = man),
+             size = 2) +
+  theme_minimal() +
+  labs(x = "Edad (años)",
+       y = "¿Asistió a manifestación?",
+       color = "Asistencia",
+       title = "¿Cómo usar la regresión lineal para CLASIFICAR?",
+       subtitle = "Reminder: la regresión lineal debe cumplir unas hipótesis",
+       caption =
+         paste0("Autor: Javier Álvarez Liébana | ",
+                "Datos: manif.rda"))
+```
+
+]
+
+
+.pull-right[
+
+```{r echo = FALSE, out.width = "90%"}
+
+# Ploteado
+ggplot(manif %>%
+         mutate(man = factor(man, labels = c("Sí", "No"))),
+       aes(x = edad, y = man)) +
+  geom_point(aes(color = man),
+             size = 2) +
+  theme_minimal() +
+  labs(x = "Edad (años)",
+       y = "¿Asistió a manifestación?",
+       color = "Asistencia",
+       title = "¿Cómo usar la regresión lineal para CLASIFICAR?",
+       subtitle = "Reminder: la regresión lineal debe cumplir unas hipótesis",
+       caption =
+         paste0("Autor: Javier Álvarez Liébana | ",
+                "Datos: manif.rda"))
+```
+
+]
+
+---
+
+# .orange[REGRESIÓN] .green[LOGÍSTICA]
+
+Como se observa, los datos tienen tan solo dos variables:
+
+* `man` es la variable objetivo y es binaria
+* `edad` es una cuantitativa continua
+
+Recordemos que las **.bg-purple_light[hipótesis de la regresión lineal]** se pueden resumir en
+
+$$Y|(X_1=x_1, \ldots,X_p=x_p) \sim \mathcal{N}(\beta_0 +\beta_1x_1 + \ldots + \beta_p x_p, \sigma_{\epsilon}^{2})$$
+
+--
+
+Sin embargo, en este caso, la variable objetivo `man` tiene la misma distribución que el **.bg-purple_light[lanzamiento de una moneda]**: hay una probabilidad $p$ de asistir (probabilidad de éxito) y de $1−p$ de no asistir (fracaso), lo que se conoce como **.bg-purple_light[distribución Bernoulli]**
+
+$$ Y | (X_1=x_1, \ldots, X_p = x_p)\sim  Ber(p)$$
+
+
+---
+
+# .orange[REGRESIÓN] .green[LOGÍSTICA]
+
+Hagamos un viaje al pasado...¿cuál era realmente el objetivo de un clasificador? Aunque lo estamos luego traduciendo a 1/0, sí/no, en realidad todos los métodos que hemos visto buscaban lo mismo: imitar al **.bg-purple_light[clasificador Bayesiano]** y **.bg-purple_light[estimar la probabilidad de pertenencia]** a cada uno de los grupos de la variable objetivo.
+
+$$\hat{y_i} = j \quad \text{si} \quad  \hat{P}(Y = j | X = \left(x_{1}, \ldots, x_{p} \right) =  \max_{g \in G} \hat{P}(Y = g | X = \left(x_{1}, \ldots, x_{p} \right)$$
+
+--
+
+La **.bg-purple_light[probabilidad]** es siempre una función (bajo ciertas condiciones)  cuyo resultado es una **.bg-purple_light[variable continua]** (acotada entre [0,1] pero continua).
+
+**.bg-purple_light[¿Y si modelizamos como una regresión lineal esa probabilidad p de ser 1 y 1-p de ser 0?]**
+
+
+
+$$P(Y = y | X_1=x_1, \ldots, X_p = x_p ) = p^{y} (1-p)^{1-y} = \beta_0 + \beta_1 x_1 + \ldots + \beta_p x_p, \quad y=\left\lbrace 0, 1 \right\rbrace$$
+
+---
+
+# .orange[REGRESIÓN] .green[LOGÍSTICA]
+
+Una primera idea podría ser usar la **.bg-purple_light[regresión lineal]** para modelizar esa probabilidad (de ser $y$, en el caso de un problema binario $y$ podrá ser 1/0). Vamos a realizar un **.bg-purple_light[ajuste lineal y la salida la interpretaremos como la probabilidad]** de ser 1 (de asistir)
+
+```{r}
+set.seed(1234567)
+# Particion
+manif_split <- initial_split(manif, prop = 0.8, strata = man)
+train_manif <- training(manif_split)
+test_manif <- testing(manif_split)
+
+# Receta simple
+manif_rec <-
+  recipe(data = manif, man ~ .) %>%
+  step_impute_mean(all_numeric_predictors())
+
+# Construimos modelo reg. lineal y flujo
+linear_mod <- linear_reg() %>% set_engine("lm")
+manif_flow <- workflow() %>% add_model(linear_mod) %>% add_recipe(manif_rec)
+manif_fit <- manif_flow %>% fit(data = manif)
+```
+
+---
+
+# .orange[REGRESIÓN] .green[LOGÍSTICA]
+
+```{r}
+# Resumen del modelo
+tidy(manif_fit)
+```
+
+
+```{r echo = FALSE}
+coefs <- tidy(manif_fit) %>% pull(estimate)
+```
+
+El ajuste devuelto es $\hat{Y} = \hat{P}(Y=1 | X = x) = 0.891 - 0.015 x$. Más allá de la bondad de ajuste...¿qué saldría si hacemos **.bg-purple_light[predicción en test]**?
+
+---
+
+# .orange[REGRESIÓN] .green[LOGÍSTICA]
+
+Vamos a aplicar `last_fit()` para aplicarlo a test y calcular las predicciones con `collect_predictions()`, y ordenamos de menor a mayor.
+
+¡No tiene sentido! **.bg-red_light[¡Obtenemos probabilidades estimadas negativas]**
+
+```{r}
+# Predecimos
+manif_flow %>%
+  last_fit(split = manif_split) %>%
+  collect_predictions() %>% 
+  arrange(.pred)
+```
+
+
+
+
+---
+
+# .orange[REGRESIÓN] .green[LOGÍSTICA]
+
+.pull-left[
+
+De hecho la diagnosis es un pequeño desastre
+
+```{r eval = FALSE}
+check_model(manif_fit %>% extract_fit_engine())
+```
+
+]
+
+.pull-right[
+
+```{r echo = FALSE, out.width = "90%"}
+check_model(manif_fit %>% extract_fit_engine())
+```
+
+]
+
+---
+
+# .orange[REGRESIÓN] .green[LOGÍSTICA]
+
+Tenemos que **.bg-purple_light[garantizar de alguna manera]** que la salida de la regresión lineal acabe **.bg-purple_light[dentro del rango [0,1]]**.
+
+--
+
+La solución va a ser **.bg-purple_light[encapsular la salida de la regresión lineal]** $\beta_0 + \beta_1 x_1 + \ldots + \beta_p x_p$ con una función $g^{-1}:\mathbb{R} \to [0,1]$ que tome de entrada un valor continua y lo **.bg-purple_light[comprima]** dentro del rango $[0,1]$.
+
+$$P(Y = 1 | X_1=x_1, \ldots, X_p = x_p ) =  p = g^{-1} \left(\beta_0 + \beta_1 x_1 + \ldots + \beta_p x_p\right) := g^{-1} \left(\eta\right)$$
+
+donde llamaremos $\eta = \beta_0 + \beta_1 x_1 + \ldots + \beta_p x_p$  a la salida de la reg. lineal (por abreviar). De la misma manera, si $g^{-1} (\eta) = p$, entonces
+
+$$g(p) = \eta = \beta_0 + \beta_1 x_1 + \ldots + \beta_p x_p$$
+
+---
+
+# .orange[REGRESIÓN] .green[LOGÍSTICA]
+
+$$P(Y = 1 | X_1=x_1, \ldots, X_p = x_p ) =  p = g^{-1} \left(\beta_0 + \beta_1 x_1 + \ldots + \beta_p x_p\right) := g^{-1} \left(\eta\right)$$
+
+donde llamaremos $\eta = \beta_0 + \beta_1 x_1 + \ldots + \beta_p x_p$  a la salida de la reg. lineal (por abreviar).
+
+&nbsp;
+
+
+En función de las **.bg-purple_light[distintas funciones de enlace]** obtenemos distintos modelos:
+
+* **.bg-purple_light[Enlace uniforme (unit)]**: función $g^{−1}(\eta)=\eta I_{0< \eta < 1} + I_{\eta \geq 1}$ (nos devuelve 0 si $\eta \geq 0$, $\eta$ si $0<\eta<1$ y 1 si $\eta \geq 1$.
+
+* **.bg-purple_light[Enlace probit]**: función $g^{−1}(\eta) = \Phi (\eta)$  basada en la distribución acumulada de una **.bg-purple_light[normal]** tal que $\Phi(x)=\frac{1}{\sqrt{2\pi}} \int_{-\infty}^{x} e^{-\frac{u^2}{2}} du$, para todo $x \in \mathbb{R}$.
+
+* **.bg-purple_light[Enlace logit]**: función $g^{−1}(\eta) = logistic(\eta):= \frac{e^{\eta}}{1 + e^{\eta}} = \frac{1}{1 + e^{-\eta}}$ basada en la distribución acumulada de una **.bg-purple_light[distribución logística]**.
+
+---
+
+# .orange[REGRESIÓN] .green[LOGÍSTICA]
+
+
+```{r echo = FALSE, out.width = "50%", fig.align = "center"}
+datos <-
+  tibble("x" = seq(-5, 5, l = 400), "unif" = pmin(pmax(x, 0), 1),
+         "probit" = pnorm(x), "logit" = 1 / (1 + exp(-x))) %>%
+  pivot_longer(cols = unif:logit, names_to = "link",
+               values_to = "y")
+ggplot(data = datos, aes(x = x, y = y, color = link)) +
+  geom_point(size = 1.5, alpha = 0.4) +
+  scale_color_colorblind() +
+  theme_minimal() +
+  labs(color = "link",
+       x = expression(paste(eta, " (salida reg. lineal)")),
+       y = expression(paste(g^{-1}(eta), " (probabilidad)")),
+       title = "Funciones de enlace para regresiónes «logísticas»")
+
+```
+
+---
+
+# .orange[REGRESIÓN] .green[LOGÍSTICA]
+
+Pero cuidado... **.bg-red_light[no sirve cualquier función]** de enlace: necesitamos unas **.bg-purple_light[mínimas condiciones de regularidad]**
+
+--
+
+* **.bg-purple_light[Invertible]**: $g:[0,1]\to \mathbb{R}$ debe ser invertible.
+
+--
+
+* **.bg-purple_light[Soporte en [0,1]]**: $g()$ definida para cualquier valor $p$ en $[0,1]$.
+
+--
+
+* **.bg-purple_light[Codominio real]**: $g^{−1}()$ definida para cualquier valor $\eta$ en $\mathbb{R}$.
+
+--
+
+* **.bg-purple_light[Monótona creciente]**: dado que $\beta_0 + \beta_1x_1 +\ldots + \beta_p x_p$ cuantifica el **.bg-purple_light[efecto de los predictores en la probabilidad de éxito]** de la variable objetivo, la probabilidad debe aumentar según crezca dicha cantidad, así que $g^{−1}()$ **.bg-purple_light[NUNCA decrece]**.
+
+---
+
+# .orange[REGRESIÓN] .green[LOGÍSTICA]
+
+.pull-left[
+
+La función de enlace más usada es la **.bg-purple_light[función logit]**
+
+$$g(p) := logit(p) = log \left(\frac{p}{1 - p} \right)$$
+
+$$g^{-1} (\eta) = \frac{1}{1 + e^{-\eta}}$$
+
+
+
+]
+
+.pull-right[
+
+```{r echo = FALSE, out.width = "90%"}
+datos <-
+  tibble("x" = seq(-5, 5, l = 400), "logit" = 1 / (1 + exp(-x))) %>%
+  pivot_longer(cols = logit, names_to = "link",
+               values_to = "y")
+ggplot(data = datos, aes(x = x, y = y, color = link)) +
+  geom_point(size = 1.5, alpha = 0.4) +
+  scale_color_colorblind() +
+  theme_minimal() +
+  labs(color = "link",
+       x = expression(paste(eta, " (salida reg. lineal)")),
+       y = expression(paste(g^{-1}(eta), " (probabilidad)")),
+       title = "Regresión logística")
+
+```
+
+]
+
+---
+
+# .orange[INTERPRETACIÓN] de .green[COEFICIENTES]
+
+Tenemos básicamente tres escenarios
+
+* Si $\hat{\eta} = \hat{\beta}_0 + \hat{\beta}_1x_1 +\ldots + \hat{\beta}_p x_p = 0$, entonces $\hat{p} = g^{-1}(\eta) = \frac{1}{1 + e^{0}} = 0.5$ (la probabilidad de éxito es la misma que la de fracaso)
+
+* Si $\hat{\eta} = \hat{\beta}_0 + \hat{\beta}_1x_1 +\ldots + \hat{\beta}_p x_p < 0$, entonces $\hat{p} = g^{-1}(\eta) = \frac{1}{1 + e^{-\eta}} < 0.5$ (la probabilidad de éxito menor que la de fracaso, sería clasificado como 0)
+
+* Si $\hat{\eta} = \hat{\beta}_0 + \hat{\beta}_1x_1 +\ldots + \hat{\beta}_p x_p > 0$, entonces $\hat{p} = g^{-1}(\eta) = \frac{1}{1 + e^{-\eta}} > 0.5$ (la probabilidad de éxito mayor que la de fracaso, sería clasificado como 1)
+
+---
+
+# .orange[INTERPRETACIÓN] de .green[COEFICIENTES]
+
+
+En el contexto de la regresión logística, es habitual hablar de **.bg-purple_light[odds o cuotas]**. Imagina  que tiramos un dado y llamamos «éxito» (1) a obtener un 1,2,3 o un 4 en la tirada: ¿cómo expresar la probabilidad de éxito?
+
+--
+
+La forma más sencilla e inmediata es decir que tenemos una probabilidad $p=2/3$ de obtener éxito. Pero otra opción es **.bg-purple_light[enfrentar la probabilidad de éxito con la de fracaso]**: ¿cuántas veces es más o menos probable el éxito que el fracaso?
+
+--
+
+En este caso, $\frac{p}{1-p} = \frac{2/3}{1/3}=2$: hay el doble de opciones de acertar que de fracasar, así que se dice que el **.bg-purple_light[evento tiene un ratio 2:1]**. A dicho cociente o ratio se le conoce como **.bg-purple_light[odds o cuota]**
+
+$$odds(Y)=\frac{p}{1-p} = \frac{g^{-1}(\eta)}{1 - g^{-1}(\eta)}, \quad p = \frac{odds(Y)}{1 + odds(Y)}$$
+
+---
+
+# .orange[INTERPRETACIÓN] de .green[COEFICIENTES]
+
+
+En el caso particular de usar logit
+
+$$odds(Y)=\frac{p}{1-p} = \frac{g^{-1}(\eta)}{1 - g^{-1}(\eta)} = \frac{1/(1+e^{-\eta})}{1 - 1/(1+e^{-\eta})} = \frac{1}{1+e^{-\eta} - 1} = e^{\eta}$$
+
+Aplicando las propiedades la exponencial
+
+$$odds(Y)=\frac{p}{1-p} = e^{\eta} = e^{\beta_0 + \beta_1 x_1 + \ldots + \beta_p x_p} = e^{\beta_0} e^{\beta_1x_1} \ldots e^{\beta_px_p}$$
+
+--
+
+Si linealizamos tomando **.bg-purple_light[logaritmos]** obtenemos los **.bg-purple_light[log-odds]**
+
+$$log-odds(Y)=log(e^{\eta}) = \eta = \beta_0 + \beta_1 x_1 + \ldots + \beta_p x_p$$
+
+---
+
+# .orange[INTERPRETACIÓN] de .green[COEFICIENTES]
+
+$$log-odds(Y)=log(e^{\eta}) = \eta = \beta_0 + \beta_1 x_1 + \ldots + \beta_p x_p$$
+
+
+&nbsp;
+
+Por tanto la **.bg-purple_light[interpretación de los coeficientes]** es la siguiente:
+
+* $\beta_0$: la **.bg-purple_light[estimación (media) de log-odds]** cuando $X_1=\ldots=X_p=0$.
+
+* $\beta_j$ con $j \geq 1$: el **.bg-purple_light[incremento aditivo medio de log-odds]** para un **.bg-purple_light[incremento unitario]** de $X_j$, siempre y cuando el resto permanezcan fijas.
+
+
+---
+
+# .orange[INTERPRETACIÓN] de .green[COEFICIENTES]
+
+$$odds(Y)=\frac{p}{1-p} = e^{\eta} = e^{\beta_0 + \beta_1 x_1 + \ldots + \beta_p x_p} = e^{\beta_0} e^{\beta_1x_1} \ldots e^{\beta_px_p}$$
+
+&nbsp;
+
+En el caso de los odds son más interpretables que los anteriores:
+
+* $e^{\beta_0}$: la **.bg-purple_light[estimación (media) de odds]** cuando $X_1=\ldots=X_p=0$, es decir, el **.bg-purple_light[ratio esperado p:1−p]** (éxito vs fracaso) cuando $X_1=\ldots=X_p=0$
+
+* $e^{\beta_j}$ con $j \geq 1$: el **.bg-purple_light[incremento multiplicativo medio de odds]** para un **.bg-purple_light[incremento aditivo unitario]** de $X_j$, siempre y cuando el resto permanezcan fijas. Dicho de otra manera: por cada unidad que se incremente $X_j$ (manteniendo el resto fijas), el **.bg-purple_light[ratio éxito/fracaso se verá multiplicado]** por $e^{\beta_j}$: si $\beta_j > 0$, aumentará el ratio por cada unidad incrementada de $X_j$; si $\beta_j < 0$, disminuirá.
+
+---
+
+
+# .orange[REGRESIÓN] .green[LOGÍSTICA]
+
+Para definir el modelo de reg. logística bastará con definir `logistic_reg()  %>% set_engine("glm")` como modelo (glm son las siglas de general linearl models, luego veremos porqué). Como sucedía en árboles y knn, la **.bg-purple_light[objetivo ya no puede ser numérica sino factor]**
+
+```{r}
+manif_factor <- manif %>% mutate(man = as_factor(man))
+
+# Receta simple
+manif_rec <-
+  recipe(data = manif_factor, man ~ .) %>%
+  step_impute_mean(all_numeric_predictors())
+
+# Construimos modelo reg. logística
+logit_mod <- logistic_reg() %>% set_engine("glm")
+
+# Flujo
+manif_flow <- workflow() %>% add_model(logit_mod) %>% add_recipe(manif_rec)
+manif_fit <- manif_flow %>% fit(data = manif_factor)
+```
+
+
+---
+
+# .orange[REGRESIÓN] .green[LOGÍSTICA]
+
+Vamos a **.bg-purple_light[interpretar los coeficientes]**
+
+```{r}
+manif_fit %>% extract_fit_engine() %>% coef()
+```
+
+La **.bg-purple_light[probabilidad de asistir]** queda estimada como
+
+$$\hat{\eta} = 2.2429 - 0.0807x, \quad \hat{p} = \hat{P}(Y=1 | X=x) = \frac{1}{1 + e^{-(2.2429 - 0.0807x)}}$$
+
+---
+
+# .orange[REGRESIÓN] .green[LOGÍSTICA]
+
+Aplicando la exponencial obtenemos los log-odds
+
+```{r}
+manif_fit %>% extract_fit_engine() %>% coef() %>% exp()
+```
+
+* Es **.bg-purple_light[9.42 veces más probable]** que una persona de 0 años asista a la manifestación a que no lo haga (interpretación inservible ya que X=0 no está dentro del rango)
+
+* Por **.bg-purple_light[cada año que cumpla la persona]**, la probabilidad de asistir frente a no asistir se multiplica por 0.9225, es decir, se **.bg-purple_light[reduce un 7.75%]**.
+
+---
+
+# .orange[REGRESIÓN] .green[LOGÍSTICA]
+
+Así quedarían las predicciones y se calcularían las cuotas
+
+```{r}
+# Predicciones y odds
+predicciones <-
+  augment(manif_fit, new_data = test_manif) %>%
+  mutate(odds = .pred_1 / .pred_0, log.odds = log(odds))
+predicciones
+```
+
+---
+
+
+
+
+# .orange[REGRESIÓN] .green[LOGÍSTICA]
+
+Podemos como en casos anteriores calcular la matriz de confusión
+
+```{r}
+# Matriz de confusión
+predicciones %>% conf_mat(man, .pred_class)
+
+# Accuracy
+predicciones %>% accuracy(truth = as_factor(man), estimate = .pred_class) 
+```
+
+---
+
+# .orange[REGRESIÓN] .green[LOGÍSTICA]
+
+.pull-left[
+
+```{r eval = FALSE}
+# Ploteado
+ggplot(predicciones,
+       aes(x = edad, y = .pred_1,
+           color =
+             factor(man, labels = c("No", "Sí")),
+           shape =
+             factor(.pred_class, labels = c("No", "Sí")))) +
+  geom_point(size = 3, alpha = 0.5) +
+  theme_minimal() +
+  labs(x = "Edad (años)",
+       y = "Probabilidad de asistir",
+       color = "Realidad",
+       shape = "Predicción",
+       title = "Ajuste de la regresión logística",
+       caption =
+         paste0("Autor: Javier Álvarez Liébana | ",
+                "Datos: manif.rda"))
+```
+
+]
+
+.pull-right[
+
+```{r echo = FALSE, out.width = "90%"}
+ggplot(predicciones,
+       aes(x = edad, y = .pred_1,
+           color =
+             factor(man, labels = c("No", "Sí")),
+           shape =
+             factor(.pred_class, labels = c("No", "Sí")))) +
+  geom_point(size = 3, alpha = 0.5) +
+  theme_minimal() +
+  labs(x = "Edad (años)",
+       y = "Probabilidad de asistir",
+       color = "Realidad",
+       shape = "Predicción",
+       title = "Ajuste de la regresión logística",
+       caption =
+         paste0("Autor: Javier Álvarez Liébana | ",
+                "Datos: manif.rda"))
+```
+
+]
+
+---
+
+name: logit-multiple
+
+# .orange[LOGÍSTICA] .green[MÚLTIPLE]
+
+Vamos a ver un ejemplo más complejo con varias variables: la **.bg-purple_light[regresión logística múltiple]**, y para ello cargaremos **.bg-purple_light[datos de incidencia cardiaca]**.
+
+```{r}
+load("./datos/incidencia_cardiaca.rda")
+cardio <- as_tibble(datos2)
+glimpse(cardio)
+```
+
+El objetivo de nuestra regresión logística será **.bg-purple_light[clasificar si el paciente ha tenido o no problemas cardíacos]** (variable `problemas`)
+
+---
+
+# .orange[LOGÍSTICA] .green[MÚLTIPLE]
+
+```{r}
+cardio %>% count(problemas) %>% mutate(porc = 100 * n / sum(n))
+```
+
+
+Tenemos una variable objetivo desbalanceada así que tendremos que incluir **.bg-purple_light[sobremuestreo en la futura receta]**
+
+---
+
+# .orange[LOGÍSTICA] .green[MÚLTIPLE]
+
+Lo primero es siempre **.bg-purple_light[realizar la partición]**. Como sucedía en la regresión sin penalizar, **.bg-purple_light[no tiene sentido crear validación]** ya que ningún hiperparámetro a afinar.
+
+```{r}
+set.seed(12345)
+# partición 80-20%
+split_cardio <- initial_split(cardio, prop = 0.8, strata = problemas)
+cardio_train <- training(split_cardio)
+cardio_test <- testing(split_cardio)
+```
+
+---
+
+# .orange[LOGÍSTICA] .green[MÚLTIPLE]
+
+No tenemos ninguna predictora cualitativa salvo la **.bg-purple_light[variable código que en realidad es un ID]** (algo cualitativo, que no debería de entrar en el ajuste, así que la eliminaremos)
+
+```{r}
+rec_cardio <-
+  recipe(data = cardio_train, problemas ~ .) %>%
+  # Eliminamos
+  step_rm(codigo) %>%
+  # Outliers
+  step_mutate(across(all_numeric_predictors(),
+                     function(x) {
+                       ifelse(abs(scores(x)) > 2, NA, x)})) %>%
+  # Imputamos
+  step_impute_mean(all_numeric_predictors()) %>%
+  # umbral de correlación
+  step_corr(all_numeric_predictors(), threshold = 0.9) %>%
+  # filtro cero varianza y oversampling
+  step_zv(all_predictors()) %>%
+  themis::step_upsample(problemas, over_ratio = 0.5)
+```
+
+---
+
+# .orange[LOGÍSTICA] .green[MÚLTIPLE]
+
+Tras ello definimos modelo y flujo, y realizamos el **.bg-purple_light[ajuste]**
+
+```{r}
+# Construimos modelo
+log_reg <- logistic_reg() %>% set_engine("glm")
+
+# Construimos flujo
+cardio_flow <-
+  workflow() %>%
+  add_model(log_reg) %>%
+  add_recipe(rec_cardio)
+
+# Ajuste
+cardio_fit <- cardio_flow %>% fit(data = cardio_train)
+```
+
+---
+
+# .orange[LOGÍSTICA] .green[MÚLTIPLE]
+
+Vamos a **.bg-purple_light[interpretar la exponencial de los coeficientes]** para interpretarlo en términos de las cuotas/odds
+
+```{r}
+exp(coef(cardio_fit %>% extract_fit_engine()))
+```
+
+* $e^{\hat{\beta}_0} = 0.00000222$: si todas las predictoras fuesen cero (algo irreal, ya que se salen del rango y no puedes tener edad nula o colesterol nulo), hay un 99.99978% menos de probabilidad de tener problemas cardiacos que de no tenerlos.
+
+---
+
+# .orange[LOGÍSTICA] .green[MÚLTIPLE]
+
+Vamos a **.bg-purple_light[interpretar la exponencial de los coeficientes]** para interpretarlo en términos de las cuotas/odds
+
+```{r}
+exp(coef(cardio_fit %>% extract_fit_engine()))
+```
+
+* **.bg-purple_light[Variables edad, pdiastolica, colesterol, peso, altura]**: al tener $\hat{\beta}_j>0$, implica que sus **.bg-purple_light[coef. exponenciales son mayores que 1]**, así que por cada **.bg-purple_light[incremento unitario]** de estas variables, se produce un **.bg-purple_light[incremento en la probabilidad de tener un problema cardiaco]** frente a no tenerlo (son los llamados factores de riesgo).
+
+* **.bg-purple_light[Variable psistolica]**: al tener $\hat{\beta}_j <0$, implica que sus coeficientes exponenciales son menores que 1, así que por cada incremento unitario de estas variables, se produce un decrecimiento en la probabilidad de tener un problema cardiaco frente a no tenerlo.
+
+---
+
+# .orange[LOGÍSTICA] .green[MÚLTIPLE]
+
+¿Cómo se **.bg-purple_light[evalúa]** una regresión logística (cualquier modelo lineal generalizado)?
+
+
+--
+
+Para ello debemos introducir el **.bg-purple_light[concepto de anomalía o deviance (D)]**: es una una generalización del SSR (suma de residuos al cuadrado) del modelo lineal, definido como la **.bg-purple_light[diferencia entre la log-verosimilitud de mi modelo saturado]** (un modelo sobreajustado, que acertará siempre cada punto) y la **.bg-purple_light[log-verosimilitud de mi ajuste]**
+
+$$D = -2(\mathcal{L}_{\hat{\beta}} - \mathcal{L}_{saturado}) \geq 0$$
+
+donde como antes la log-verosimilitud cuantifica como de probable es que, si el modelo fuese cierto, hayamos obtenido los resultados que hemos obtenido), definida como $ln(P(observado | modelo))$
+
+
+&nbsp;
+
+De forma sencilla, $D$ será lo que le **.bg-purple_light[falta a nuestro modelo para ser «perfecto»]** (en el sentido de saturado/sobreajustado, el modelo más probable dada una muestra).
+
+---
+
+# .orange[LOGÍSTICA] .green[MÚLTIPLE]
+
+
+Al igual que en la bondad de ajuste de un modelo lineal se usa como referencia la suma total de los cuadrados (SST), definiendo $R^2 = 1 − \frac{SSE}{SST}$, aquí llamaremos $D_0$ a la **.bg-purple_light[anomalía nula o null deviance]**: aquella obtenida al comparar el modelo perfecto frente a un **.bg-purple_light[modelo sin parámetros]**, solo con el intercepto.
+
+$$D = -2(\mathcal{L}_{\hat{\beta}_0} - \mathcal{L}_{saturado}) \geq 0$$
+
+Con ambas deviance podemos definir un **.bg-purple_light[pseudo-R2]** conocido como **.bg-purple_light[coeficiente de McFadden]**
+
+$$R^2 = 1 - \frac{D}{D_0}$$
+
+---
+
+# .orange[LOGÍSTICA] .green[MÚLTIPLE]
+
+Dichos valores se pueden ver haciendo un `summary()` del ajuste
+
+```{r}
+cardio_fit %>% extract_fit_engine() %>% summary()
+```
+
+---
+
+# .orange[LOGÍSTICA] .green[MÚLTIPLE]
+
+Dichos valores también se pueden ver haciendo un resumen del ajuste con `glance()` (donde `logLik` es justo la log-verosimilitud del modelo)
+
+```{r}
+glance(cardio_fit)
+```
+
+Ese «pseudo-R2» que hemos calculado se conoce también como coeficiente de McFadden y podemos extraerlo con la función `pR2()` del paquete `{pscl}`.
+
+```{r}
+library(pscl)
+pR2(cardio_fit %>% extract_fit_engine())
+```
+
+---
+
+# .orange[LOGÍSTICA] .green[MÚLTIPLE]
+
+Si te fijas volvemos a tener en la salida de `tidy()` unos p-valores que nos indican que hay variables que no están siendo significativas (por ejemplo `psistolica` o `altura`), así que deberemos **.bg-purple_light[realizar una selección stepwise de modelos]** como antes
+
+```{r}
+tidy(cardio_fit)
+```
+
+---
+
+# .orange[LOGÍSTICA] .green[MÚLTIPLE]
+
+
+Pero dado que para la selección BIC/AIC vamos a tener que "salirnos" del entorno tidymodels y aplicar una función (en concreto `glm()` en lugar del `lm()` de antes), veamos antes que es eso de `glm()` o modelos lineales generalizados.
+
+---
+
+name: glm
+
+# Modelos .orange[GLM]
+
+
+A lo largo del documento hemos mencionado varias veces a los **.bg-purple_light[modelos lineales generalizados]**. ¿Qué son?
+
+--
+
+La idea es aplicar la misma filosofía de la regresión logística: **.bg-purple_light[encapsular una combinación lineal de parámetros]** mediante el uso de una función enlace. Los **.bg-purple_light[modelos lineales generalizados (glm)]** son una generalización de los mismos, de las siguientes maneras
+
+* **.bg-purple_light[Cambiar enlace g]**: por ejemplo, el modelo probit mantiene todo igual pero cambia la función que actua sobre $\eta$
+
+* **.bg-purple_light[Cambiar el soporte de Y]**: la variable respuesta $Y$ podría no ser binaria sino tomar varias categorías (**.bg-purple_light[regresión logística multinomial]**) o incluso infinitas discretas (**.bg-purple_light[regresión de Poisson]**).
+
+---
+
+# Modelos .orange[GLM]
+
+
+La idea es aplicar la misma filosofía de la regresión logística: **.bg-purple_light[encapsular una combinación lineal de parámetros]** mediante el uso de una función enlace. Los **.bg-purple_light[modelos lineales generalizados (glm)]** son una generalización de los mismos, de las siguientes maneras
+
+* **.bg-purple_light[Distribución condicional]**: hasta ahora $Y|(X_1=x_1,\ldots, X_p=x_p) \sim Ber(logistic(\eta))$, pero la distribución de Bernoulli es un caso particular de la **.bg-purple_light[familia exponencial de distribuciones]**. Decimos que $Y|(X_1=x_1,\ldots, X_p=x_p) \sim E(\eta(\beta),\phi,a,b,c)$ donde $E(\eta(\beta),\phi,a,b,c)$ representa lo que se conoce como familia de distribuciones exponenciales, aquellas cuya función de densidad se puede definirde manera general como
+
+$$f(y;\theta,\phi)= e^{\frac{y\theta − b(\theta)}{a(\phi)} + c(y,\phi)}, \quad Y \sim E(\theta,\phi,a,b,c)$$
+
+Un ejemplo de distribuciones de la familia exponencial son la Normal, exponencial, gamma, chi-cuadrado, Binomial o Poisson. El ejemplo más famoso fuera de la familia exponencial es la t-Student.
+
+---
+
+# Modelos .orange[GLM]
+
+$$f(y;\theta,\phi)= e^{\frac{y\theta − b(\theta)}{a(\phi)} + c(y,\phi)}, \quad Y \sim E(\theta,\phi,a,b,c)$$
+
+El parámetro $\phi$ se conoce como **.bg-purple_light[escala]** (si se conoce se dice que es una familia exponencial con parámetro canónico de interés $\theta$).
+
+Lo **.bg-purple_light[interesante de la familia exponencial]** es que se cumple que
+
+$$\mu = E[Y] = b'(\theta), \quad \sigma^2 = Var[Y] = b''(\theta)a(\phi)$$
+
+y además nuestra **.bg-purple_light[función de enlace]** (canónica) se definirá como una función $g$ (cumpliendo las condiciones) tal que $\theta = (b')^{−1}(\mu)=g(\mu)$.
+
+---
+
+# Modelos .orange[GLM]
+
+$$f(y;\theta,\phi)= exp \left\lbrace \frac{y\theta − b(\theta)}{a(\phi)} + c(y,\phi) \right\rbrace, \quad Y \sim E(\theta,\phi,a,b,c)$$
+
+Veamos un ejemplo con la **.bg-purple_light[distribución normal]**: vamos a tomar su función de densidad y vamos a ponerla de tal forma que podamos sustituir valores en la ecuación de arriba
+
+
+$$\begin{eqnarray}
+    f(y; \theta, \phi ) &=&  \frac{1}{\sqrt{2 \pi} \sigma} e^{-\frac{(y - \mu)^2}{2 \sigma^2}} = \frac{1}{\sqrt{2 \pi} \sigma} e^{\frac{-y^2 - \mu^2 + 2y\mu}{2 \sigma^2}} = e^{ln(\frac{1}{\sqrt{2 \pi} \sigma})} e^{\frac{-y^2 - \mu^2 + 2y\mu}{2 \sigma^2}} = e^{ln\left(\left(2 \pi \sigma \right)^{-1/2} \right)} e^{\frac{-y^2 - \mu^2 + 2y\mu}{2 \sigma^2}} \nonumber \\
+    &=& exp \left\lbrace \frac{-y^2 - \mu^2 + 2y\mu}{2 \sigma^2} - \frac{1}{2} \ln \left(2 \pi \sigma^2 \right) \right\rbrace = exp \left\lbrace \frac{y\mu - \mu^2 / 2}{\sigma^2} + \left[- \frac{1}{2} \ln \left(2 \pi \sigma^2 \right) - \frac{y^2}{2 \sigma^2} \right] \right\rbrace \nonumber
+\end{eqnarray}$$
+
+* $\theta = \mu$ y $b(\theta) = \frac{\theta^2}{2}$ (se cumple que $b'(\theta) = \mu$), por lo que $g(\mu)  = \theta = \mu$ (es decir, la **.bg-purple_light[función enlace es la identidad]**)
+
+* Como $b''(\theta) = 1$ y $\sigma^2 = b''(\theta) * a(\phi)$, entonces $a(\phi) =  \phi = \sigma^2$.
+
+* Por último, $c(y, \phi) = - \frac{1}{2} \ln \left(2 \pi \phi \right) - \frac{y^2}{2 \phi}$
+
+---
+
+# Modelos .orange[GLM]
+
+$$f(y;\theta,\phi)= exp \left\lbrace \frac{y\theta − b(\theta)}{a(\phi)} + c(y,\phi) \right\rbrace, \quad Y \sim E(\theta,\phi,a,b,c)$$
+
+Vamos a repetir la idea con la función de densidad de $Y$ para una **.bg-purple_light[logística]** (que hemos dicho que sigue una Bernoulli, que es un caso particular de binomial con $n=1$)
+
+
+$$\begin{eqnarray}
+    f(y; \theta, \phi ) &=& {n \choose y} p^y (1-p)^{n - y} =  p^y (1-p)^{1 - y} =  exp \left\lbrace ln(p^y)  \right\rbrace exp \left\lbrace ln((1-p)^{1 - y})  \right\rbrace \nonumber \\
+    &=& exp \left\lbrace yln(p)  \right\rbrace exp \left\lbrace (1 - y)ln(1-p)  \right\rbrace = exp \left\lbrace y \ln \left(\frac{p}{1-p} \right) + \ln \left(1-p\right) + \ln \left(1 \right) \right\rbrace \nonumber
+\end{eqnarray}$$
+
+
+* $\theta = \ln \left(\frac{p}{1-p} \right)$ y $b(\theta) = \frac{\theta^2}{2}$ por lo que $g(\mu)  = \theta = \ln \left(\frac{p}{1-p} \right)$ (es decir, la función de enlace logit que habíamos visto)
+
+* $b(\theta) = -ln(1-p)$, y si despejamos $p$ de arriba, tenemos que $b(\theta) = -ln(1-\frac{\theta}{1+\theta})$.
+
+* $a \left( \phi \right) = 1$, $\phi = 1$ y $c(y, \phi) = \ln \left(1\right)$
+    
+
+---
+
+
+# Modelos .orange[GLM]
+
+La potencia de la **.bg-purple_light[teoría de modelos lineales generalizados]** es que una gran variedad de modelos en realidad son casos particulares de un modelo general.
+
+```{r imagen-glm, echo = FALSE, out.width = "85%", fig.align = "center", fig.cap = "Tabla de algunos GLM"}
+knitr::include_graphics("./img/glm.jpg")
+```
+
+---
+
+
+# Modelos .orange[GLM]
+
+Si volvemos a nuestra regresión logística, teníamos pendiente **.bg-purple_light[preparar receta y ejecutar el ajuste manual]** para luego hacer `stepAIC()`
+
+```{r}
+cardio_prep <- bake(rec_cardio %>% prep(), new_data = NULL)
+```
+
+Para aplicarlo simplemente debemos usar la familia `glm()` e indicarle que **.bg-purple_light[familia de distribuciones]** (de todas las de la tabla anterior) queremos usar (que caso particular de glm queremos). En el caso de la **.bg-purple_light[logística será la familia binomial]** (si fuese una reg. lineal sería `"gaussian"`).
+
+```{r}
+reg_logit_glm <-
+  glm(data = cardio_prep, problemas ~ .,
+      family = "binomial") #<<
+```
+
+---
+
+# Modelos .orange[GLM]
+
+Tras ello volvemos como antes a ejecutar `stepAIC()` (voy a lanzar solo el AIC por simplificar)
+
+```{r}
+# AIC
+cardio_fit_AIC <- stepAIC(reg_logit_glm, k = 2)
+```
+
+---
+
+# Modelos .orange[GLM]
+
+Nos ha acabado dejando como factores de riesgo lo obvio: edad, colesterol y peso.
+
+```{r}
+tidy(cardio_fit_AIC)
+```
+
+---
+
+# Modelos .orange[GLM]
+
+```{r}
+exp(coef(cardio_fit_AIC))
+```
+
+* Por cada año que cumples, tu probabilidad de problema cardiaco vs no tenerlo se incrementa un 6.665%
+
+* Por cada unidad de colesterol que amentas, se incrementa un 0.7349%
+
+* Por cada kg de más, aumenta un 1.959%
+
+---
+
+# Modelos .orange[GLM]
+
+Repetimos la receta quedándonos con la selección de modelos hecha por el AIC
+
+```{r}
+set.seed(12345)
+rec_cardio_AIC <-
+  recipe(data = cardio_train, problemas ~ edad + colesterol + peso) %>%
+  step_mutate(across(all_numeric_predictors(),
+                     function(x) {
+                       ifelse(abs(scores(x)) > 2, NA, x)})) %>%
+  step_impute_mean(all_numeric_predictors()) %>%
+  step_corr(all_numeric_predictors(), threshold = 0.9) %>%
+  step_zv(all_predictors()) %>%
+  themis::step_upsample(problemas, over_ratio = 0.5)
+
+# Construimos flujo
+cardio_flow_AIC <-
+  workflow() %>% add_model(log_reg) %>% add_recipe(rec_cardio_AIC)
+
+# Ajuste
+cardio_fit_AIC <- cardio_flow_AIC %>% fit(data = cardio_train)
+```
+
+
+---
+
+# Modelos .orange[GLM]
+
+```{r}
+cardio_fit_AIC %>% extract_fit_engine() %>% summary()
+```
+
+---
+
+# Modelos .orange[GLM]
+
+El modelo con selección de variables se equivoca incluso menos.
+
+
+```{r}
+compare_performance(cardio_fit %>% extract_fit_engine(),
+                    cardio_fit_AIC %>% extract_fit_engine())
+```
+
+---
+
+# Modelos .orange[GLM]
+
+Construimos las predicciones y odds como antes
+
+```{r}
+# Predicciones y odds
+predicciones <-
+  augment(cardio_fit_AIC, new_data = cardio_test) %>%
+  mutate(odds = .pred_1 / .pred_0, log.odds = log(odds))
+
+predicciones %>% conf_mat(problemas, .pred_class)
+predicciones %>% accuracy(truth = problemas, estimate = .pred_class) 
+```
+
+
 
 ---
 
